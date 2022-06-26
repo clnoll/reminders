@@ -19,9 +19,10 @@ func main() {
 	defer c.Close()
 	// This worker hosts both Workflow and Activity functions
 	w := worker.New(c, app.ReminderTaskQueue, worker.Options{})
-	w.RegisterWorkflow(app.CreateReminder)
-	w.RegisterActivity(app.Snooze)
-	w.RegisterActivity(app.Dismiss)
+	w.RegisterWorkflow(app.MakeReminderWorkflow)
+	w.RegisterActivity(app.Create)
+	w.RegisterActivity(app.Update)
+	w.RegisterActivity(app.Delete)
 	// Start listening to the Task Queue
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

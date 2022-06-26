@@ -8,7 +8,7 @@ import (
 )
 
 // @@@SNIPSTART reminders-workflow
-func CreateReminder(ctx workflow.Context, reminderDetails ReminderDetails) error {
+func MakeReminderWorkflow(ctx workflow.Context, reminderDetails ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
@@ -24,11 +24,15 @@ func CreateReminder(ctx workflow.Context, reminderDetails ReminderDetails) error
 		RetryPolicy: retrypolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
-	err := workflow.ExecuteActivity(ctx, Snooze, reminderDetails).Get(ctx, nil)
+	err := workflow.ExecuteActivity(ctx, Create, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}
-	err = workflow.ExecuteActivity(ctx, Dismiss, reminderDetails).Get(ctx, nil)
+	err = workflow.ExecuteActivity(ctx, Update, reminderDetails).Get(ctx, nil)
+	if err != nil {
+		return err
+	}
+	err = workflow.ExecuteActivity(ctx, Delete, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}

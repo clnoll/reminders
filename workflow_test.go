@@ -20,9 +20,10 @@ func Test_Workflow(t *testing.T) {
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
-	env.OnActivity(Snooze, mock.Anything, testDetails).Return(nil)
-	env.OnActivity(Dismiss, mock.Anything, testDetails).Return(nil)
-	env.ExecuteWorkflow(CreateReminder, testDetails)
+	env.OnActivity(Create, mock.Anything, testDetails).Return(nil)
+	env.OnActivity(Update, mock.Anything, testDetails).Return(nil)
+	env.OnActivity(Delete, mock.Anything, testDetails).Return(nil)
+	env.ExecuteWorkflow(MakeReminderWorkflow, testDetails)
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())
 }

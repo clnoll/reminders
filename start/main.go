@@ -28,7 +28,7 @@ func main() {
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
-	we, err := c.ExecuteWorkflow(context.Background(), options, app.CreateReminder, reminderDetails)
+	we, err := c.ExecuteWorkflow(context.Background(), options, app.MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}

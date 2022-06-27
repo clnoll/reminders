@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"go.temporal.io/sdk/client"
 
@@ -22,8 +23,8 @@ func main() {
 		TaskQueue: app.ReminderTaskQueue,
 	}
 	reminderDetails := app.ReminderDetails{
-		CreatedAt:    1656191661,
-		ReminderTime: 1656278061,
+		CreatedAt:    time.Now(),
+		ReminderTime: time.Now().Add(time.Second * 60),
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
@@ -39,10 +40,10 @@ func main() {
 
 func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {
 	log.Printf(
-		"\nCreating reminder for %s (%s) at %f. ReminderId: %s\n",
+		"\nCreating reminder for %s (%s) at %s. ReminderId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime,
+		reminderDetails.ReminderTime.Format(app.TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	log.Printf(

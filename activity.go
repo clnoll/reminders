@@ -7,10 +7,10 @@ import (
 
 func Create(ctx context.Context, reminderDetails ReminderDetails) error {
 	fmt.Printf(
-		"\nCreating reminder %s (%s) to alert at %f. ReferenceId: %s\n",
+		"\nCreating reminder %s (%s) to alert at %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime,
+		reminderDetails.ReminderTime.Format(TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil
@@ -18,10 +18,10 @@ func Create(ctx context.Context, reminderDetails ReminderDetails) error {
 
 func Update(ctx context.Context, reminderDetails ReminderDetails) error {
 	fmt.Printf(
-		"\nSnoozing reminder %s (%s) until %f. ReferenceId: %s\n",
+		"\nSnoozing reminder %s (%s) until %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime,
+		reminderDetails.ReminderTime.Format(TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil

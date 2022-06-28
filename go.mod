@@ -3,6 +3,7 @@ module reminders/app
 go 1.18
 
 require (
+	github.com/gorilla/mux v1.8.0
 	github.com/stretchr/testify v1.7.5
 	go.temporal.io/sdk v1.15.0
 )

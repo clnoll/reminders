@@ -7,6 +7,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"reminders/app"
+	"reminders/app/workflows"
 )
 
 // @@@SNIPSTART reminders-worker
@@ -19,7 +20,7 @@ func main() {
 	defer c.Close()
 	// This worker hosts both Workflow and Activity functions
 	w := worker.New(c, app.ReminderTaskQueue, worker.Options{})
-	w.RegisterWorkflow(app.MakeReminderWorkflow)
+	w.RegisterWorkflow(workflows.MakeReminderWorkflow)
 	w.RegisterActivity(app.Create)
 	w.RegisterActivity(app.Update)
 	w.RegisterActivity(app.Delete)

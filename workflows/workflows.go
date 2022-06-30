@@ -1,6 +1,7 @@
-package app
+package workflows
 
 import (
+	"reminders/app"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -8,7 +9,7 @@ import (
 )
 
 // @@@SNIPSTART reminders-workflow
-func MakeReminderWorkflow(ctx workflow.Context, reminderDetails ReminderDetails) error {
+func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
@@ -24,15 +25,15 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails ReminderDetails)
 		RetryPolicy: retrypolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
-	err := workflow.ExecuteActivity(ctx, Create, reminderDetails).Get(ctx, nil)
+	err := workflow.ExecuteActivity(ctx, app.Create, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}
-	err = workflow.ExecuteActivity(ctx, Update, reminderDetails).Get(ctx, nil)
+	err = workflow.ExecuteActivity(ctx, app.Update, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}
-	err = workflow.ExecuteActivity(ctx, Delete, reminderDetails).Get(ctx, nil)
+	err = workflow.ExecuteActivity(ctx, app.Delete, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}

@@ -15,4 +15,10 @@ type ReminderDetails struct {
 	ReminderText string
 	ReminderName string
 	ReminderId   string
+	Phone        string
+}
+
+type ReminderInput struct {
+	Phone    string
+	NMinutes int
 }

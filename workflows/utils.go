@@ -1,4 +1,4 @@
-package main
+package workflows
 
 import (
 	"context"
@@ -8,11 +8,9 @@ import (
 	"go.temporal.io/sdk/client"
 
 	"reminders/app"
-	"reminders/app/workflows"
 )
 
-// @@@SNIPSTART reminders-start-workflow
-func main() {
+func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string) {
 	// Create the client object just once per process
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
@@ -25,19 +23,17 @@ func main() {
 	}
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    time.Now(),
-		ReminderTime: time.Now().Add(time.Second * 60),
+		ReminderTime: time.Now().Add(time.Minute * time.Duration(nMins)),
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
-	we, err := c.ExecuteWorkflow(context.Background(), options, workflows.MakeReminderWorkflow, reminderDetails)
+	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}
-	printResults(reminderDetails, we.GetID(), we.GetRunID())
+	return reminderDetails, we.GetID(), we.GetRunID()
 }
-
-// @@@SNIPEND
 
 func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {
 	log.Printf(

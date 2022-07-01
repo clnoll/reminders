@@ -19,6 +19,8 @@ type ReminderDetails struct {
 }
 
 type ReminderInput struct {
-	Phone    string
-	NMinutes int
+	ReminderId string
+	RunId      string
+	Phone      string
+	NMinutes   int
 }

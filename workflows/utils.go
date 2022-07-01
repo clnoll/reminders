@@ -10,6 +10,11 @@ import (
 	"reminders/app"
 )
 
+type CancelReminderSignal struct {
+	WorkflowId string
+	RunId      string
+}
+
 func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
 	// Create the client object just once per process
 	c, err := client.NewClient(client.Options{})
@@ -21,9 +26,11 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 		ID:        "reminder-workflow",
 		TaskQueue: app.ReminderTaskQueue,
 	}
+	createdAt := time.Now()
+	remindAt := createdAt.Add(time.Minute * time.Duration(nMins))
 	reminderDetails := app.ReminderDetails{
-		CreatedAt:    time.Now(),
-		ReminderTime: time.Now().Add(time.Minute * time.Duration(nMins)),
+		CreatedAt:    createdAt,
+		ReminderTime: remindAt,
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
@@ -33,6 +40,20 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 		log.Fatalln("error starting Reminder workflow", err)
 	}
 	return reminderDetails, we.GetID(), we.GetRunID(), err
+}
+
+func DeleteWorkflow(workflowId string, runId string) error {
+	// Delete the reminder
+	c, err := client.NewClient(client.Options{})
+	if err != nil {
+		log.Fatalln("unable to create Temporal client", err)
+	}
+	defer c.Close()
+	err = c.CancelWorkflow(context.Background(), workflowId, runId)
+	if err != nil {
+		log.Fatalln("error deleting Reminder workflow", workflowId, runId, err)
+	}
+	return err
 }
 
 func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {

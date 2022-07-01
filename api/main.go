@@ -54,17 +54,33 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"alive": true}`)
+	vars := mux.Vars(r)
+	runId := vars["runId"]
+	workflowId := vars["workflowId"]
+
+	err := workflows.DeleteWorkflow(workflowId, runId)
+	if err != nil {
+		log.Printf("failed to delete workflow %s (runID %s): %v", workflowId, runId, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"workflowId": workflowId,
+			"runId":      runId,
+			"status":     "cancelled",
+		})
 }
 
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/reminders", ReminderListHandler).Methods("GET")
 	r.HandleFunc("/reminders", CreateReminderHandler).Methods("POST")
-	r.HandleFunc("/reminders/{reminder_id}", GetReminderHandler).Methods("GET")
-	r.HandleFunc("/reminders/{reminder_id}", UpdateReminderHandler).Methods("PATCH")
-	r.HandleFunc("/reminders/{reminder_id}", DeleteReminderHandler).Methods("DELETE")
+	r.HandleFunc("/reminders/{workflowId}/{runId}", GetReminderHandler).Methods("GET")
+	r.HandleFunc("/reminders/{workflowId}/{runId}", UpdateReminderHandler).Methods("PATCH")
+	r.HandleFunc("/reminders/{workflowId}/{runId}", DeleteReminderHandler).Methods("DELETE")
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":8000", r))

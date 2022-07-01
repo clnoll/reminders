@@ -24,19 +24,24 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 		// Temporal retries failures by default, this is just an example.
 		RetryPolicy: retrypolicy,
 	}
+
 	ctx = workflow.WithActivityOptions(ctx, options)
+
+	// Create a reminder
 	err := workflow.ExecuteActivity(ctx, app.Create, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}
+
+	// Dummy Update
 	err = workflow.ExecuteActivity(ctx, app.Update, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}
-	err = workflow.ExecuteActivity(ctx, app.Delete, reminderDetails).Get(ctx, nil)
-	if err != nil {
-		return err
-	}
+
+	// Sleep until the reminder time has elapsed
+	workflow.Sleep(ctx, reminderDetails.ReminderTime.Sub(reminderDetails.CreatedAt))
+
 	return nil
 }
 

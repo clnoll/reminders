@@ -7,7 +7,7 @@ const ReminderTaskQueue = "REMINDER_TASK_QUEUE"
 
 // @@@SNIPEND
 
-const TIME_FORMAT = "Mon Jan 2 15:04:05 MST 2006"
+const TIME_FORMAT = "Mon Jan 2 2006 15:04:05 MST"
 
 type ReminderDetails struct {
 	CreatedAt    time.Time

@@ -26,15 +26,21 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workflows.StartWorkflow(input.Phone, input.NMinutes)
+	reminderInfo, workflowId, runId, err := workflows.StartWorkflow(input.Phone, input.NMinutes)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, `{"alive": true}`)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"workflowId":   workflowId,
+			"runId":        runId,
+			"reminderId":   reminderInfo.ReminderId,
+			"reminderTime": reminderInfo.ReminderTime.Format(app.TIME_FORMAT),
+		})
 }
 
 func GetReminderHandler(w http.ResponseWriter, r *http.Request) {

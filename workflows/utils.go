@@ -10,7 +10,7 @@ import (
 	"reminders/app"
 )
 
-func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string) {
+func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
 	// Create the client object just once per process
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
@@ -32,7 +32,7 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}
-	return reminderDetails, we.GetID(), we.GetRunID()
+	return reminderDetails, we.GetID(), we.GetRunID(), err
 }
 
 func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {

@@ -36,3 +36,13 @@ func Delete(ctx context.Context, reminderDetails ReminderDetails) error {
 	)
 	return nil
 }
+
+func SendReminder(ctx context.Context, reminderDetails ReminderDetails) error {
+	fmt.Printf(
+		"\nSending reminder: %s (%s)! ReferenceId: %s\n",
+		reminderDetails.ReminderName,
+		reminderDetails.ReminderText,
+		reminderDetails.ReminderId,
+	)
+	return nil
+}

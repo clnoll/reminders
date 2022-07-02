@@ -39,8 +39,11 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 		return err
 	}
 
-	// Sleep until the reminder time has elapsed
-	workflow.Sleep(ctx, reminderDetails.ReminderTime.Sub(reminderDetails.CreatedAt))
+	// Create a timer whose handler will send the reminder at the specified time
+	timerFuture := workflow.NewTimer(childCtx, reminderDetails.NMinutes)
+	log.Println("Created timer for", reminderDetails.NMinutes, "minutes")
+	selector.AddFuture(timerFuture, func(f workflow.Future) {
+		_ = workflow.ExecuteActivity(ctx, app.SendReminder).Get(ctx, nil)
 
 	return nil
 }

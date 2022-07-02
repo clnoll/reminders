@@ -24,6 +24,7 @@ func main() {
 	w.RegisterActivity(app.Create)
 	w.RegisterActivity(app.Update)
 	w.RegisterActivity(app.Delete)
+	w.RegisterActivity(app.SendReminder)
 	// Start listening to the Task Queue
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"log"
 	"reminders/app"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// @@@SNIPSTART reminders-workflow
 func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
@@ -44,5 +44,3 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 
 	return nil
 }
-
-// @@@SNIPEND

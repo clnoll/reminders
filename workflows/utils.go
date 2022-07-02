@@ -16,7 +16,6 @@ type CancelReminderSignal struct {
 }
 
 func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
-	// Create the client object just once per process
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
 		log.Fatalln("unable to create Temporal client", err)

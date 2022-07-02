@@ -27,7 +27,6 @@ func Update(ctx context.Context, reminderDetails ReminderDetails) error {
 	return nil
 }
 
-// @@@SNIPSTART reminders-activity
 func Delete(ctx context.Context, reminderDetails ReminderDetails) error {
 	fmt.Printf(
 		"\nDismissing reminder %s (%s). ReferenceId: %s\n",
@@ -35,9 +34,5 @@ func Delete(ctx context.Context, reminderDetails ReminderDetails) error {
 		reminderDetails.ReminderText,
 		reminderDetails.ReminderId,
 	)
-	// Switch out comments on the return statements to simulate an error
-	//return fmt.Errorf("deposit did not occur due to an issue")
 	return nil
 }
-
-// @@@SNIPEND"

@@ -25,7 +25,7 @@ func main() {
 	}
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    time.Now(),
-		ReminderTime: time.Now().Add(time.Second * 60),
+		NMinutes:     time.Second * 60,
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
@@ -44,7 +44,7 @@ func printResults(reminderDetails app.ReminderDetails, workflowID, runID string)
 		"\nCreating reminder for %s (%s) at %s. ReminderId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime.Format(app.TIME_FORMAT),
+		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes),
 		reminderDetails.ReminderId,
 	)
 	log.Printf(

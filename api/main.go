@@ -41,7 +41,7 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 			"workflowId":   workflowId,
 			"runId":        runId,
 			"reminderId":   reminderInfo.ReminderId,
-			"reminderTime": reminderInfo.ReminderTime.Format(app.TIME_FORMAT),
+			"reminderTime": app.GetReminderTime(reminderInfo.CreatedAt, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 

@@ -10,7 +10,7 @@ func Create(ctx context.Context, reminderDetails ReminderDetails) error {
 		"\nCreating reminder %s (%s) to alert at %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime.Format(TIME_FORMAT),
+		GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil
@@ -21,7 +21,7 @@ func Update(ctx context.Context, reminderDetails ReminderDetails) error {
 		"\nSnoozing reminder %s (%s) until %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderTime.Format(TIME_FORMAT),
+		GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil

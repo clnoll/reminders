@@ -9,6 +9,13 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type UpdateReminderSignal struct {
+	NMinutes     int
+	ReminderText string
+	ReminderName string
+	Phone        string
+}
+
 func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
@@ -33,17 +40,44 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 		return err
 	}
 
-	// Dummy Update
-	err = workflow.ExecuteActivity(ctx, app.Update, reminderDetails).Get(ctx, nil)
-	if err != nil {
-		return err
-	}
+	// Handle any incoming updates and/or wait until the reminder time has elapsed
+	childCtx, cancelHandler := workflow.WithCancel(ctx)
+	selector := workflow.NewSelector(ctx)
+	processed := false
 
 	// Create a timer whose handler will send the reminder at the specified time
 	timerFuture := workflow.NewTimer(childCtx, reminderDetails.NMinutes)
 	log.Println("Created timer for", reminderDetails.NMinutes, "minutes")
 	selector.AddFuture(timerFuture, func(f workflow.Future) {
 		_ = workflow.ExecuteActivity(ctx, app.SendReminder).Get(ctx, nil)
+		processed = true
+	})
+	// Watch for signals to update the reminder
+	for {
+		if processed {
+			return nil
+		}
+		var reminderUpdateVal UpdateReminderSignal
+		channel := workflow.GetSignalChannel(ctx, app.UpdateReminderSignal)
+		selector.AddReceive(channel, func(c workflow.ReceiveChannel, more bool) {
+			log.Println("Received signal on channel", app.UpdateReminderSignal)
+			c.Receive(ctx, &reminderUpdateVal)
+			updated := updateReminderDetails(reminderUpdateVal, reminderDetails)
+			log.Println("ReminderDetails updated: ", updated)
 
-	return nil
+			// If the reminder time was updated, cancel the existing timer and create a new one
+			if updated.NMinutes != reminderDetails.NMinutes {
+				cancelHandler()
+				log.Println("Cancelled existing timer.")
+				childCtx, cancelHandler = workflow.WithCancel(ctx)
+				timerFuture := workflow.NewTimer(childCtx, reminderDetails.NMinutes)
+				selector.AddFuture(timerFuture, func(f workflow.Future) {
+					_ = workflow.ExecuteActivity(ctx, app.SendReminder).Get(ctx, nil)
+				})
+				log.Println("New Timer created.")
+			}
+		})
+		// Wait the timer or the update
+		selector.Select(ctx)
+	}
 }

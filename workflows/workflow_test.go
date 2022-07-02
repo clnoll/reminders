@@ -19,7 +19,6 @@ func Test_Workflow(t *testing.T) {
 		ReminderId:   "Test",
 	}
 	env.OnActivity(app.Create, mock.Anything, testDetails).Return(nil)
-	env.OnActivity(app.Update, mock.Anything, testDetails).Return(nil)
 	env.OnActivity(app.Delete, mock.Anything, testDetails).Return(nil)
 	env.ExecuteWorkflow(MakeReminderWorkflow, testDetails)
 	require.True(t, env.IsWorkflowCompleted())

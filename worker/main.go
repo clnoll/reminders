@@ -22,7 +22,6 @@ func main() {
 	w := worker.New(c, app.ReminderTaskQueue, worker.Options{})
 	w.RegisterWorkflow(workflows.MakeReminderWorkflow)
 	w.RegisterActivity(app.Create)
-	w.RegisterActivity(app.Update)
 	w.RegisterActivity(app.Delete)
 	w.RegisterActivity(app.SendReminder)
 	// Start listening to the Task Queue

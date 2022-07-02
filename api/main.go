@@ -51,8 +51,35 @@ func GetReminderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"alive": true}`)
+	vars := mux.Vars(r)
+	runId := vars["runId"]
+	workflowId := vars["workflowId"]
+	var input app.ReminderInput
+
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, input.Phone, input.NMinutes)
+	if err != nil {
+		log.Printf("failed to start workflow: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Updated reminder for workflowId %s runId %s", workflowId, runId)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"workflowId":   workflowId,
+			"runId":        runId,
+			"reminderId":   reminderInfo.ReminderId,
+			"reminderTime": app.GetReminderTime(reminderInfo.CreatedAt, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
+		})
 }
 
 func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +109,7 @@ func main() {
 	r.HandleFunc("/reminders", ReminderListHandler).Methods("GET")
 	r.HandleFunc("/reminders", CreateReminderHandler).Methods("POST")
 	r.HandleFunc("/reminders/{workflowId}/{runId}", GetReminderHandler).Methods("GET")
-	r.HandleFunc("/reminders/{workflowId}/{runId}", UpdateReminderHandler).Methods("PATCH")
+	r.HandleFunc("/reminders/{workflowId}/{runId}", UpdateReminderHandler).Methods("PUT")
 	r.HandleFunc("/reminders/{workflowId}/{runId}", DeleteReminderHandler).Methods("DELETE")
 	http.Handle("/", r)
 

@@ -3,6 +3,7 @@ package app
 import "time"
 
 const ReminderTaskQueue = "REMINDER_TASK_QUEUE"
+const UpdateReminderSignal = "update-reminder-signal"
 
 const TIME_FORMAT = "Mon Jan 2 2006 15:04:05 MST"
 

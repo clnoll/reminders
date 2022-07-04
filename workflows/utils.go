@@ -3,17 +3,11 @@ package workflows
 import (
 	"context"
 	"log"
+	"reminders/app"
 	"time"
 
 	"go.temporal.io/sdk/client"
-
-	"reminders/app"
 )
-
-type CancelReminderSignal struct {
-	WorkflowId string
-	RunId      string
-}
 
 func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
 	c, err := client.NewClient(client.Options{})
@@ -23,7 +17,7 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 	defer c.Close()
 	options := client.StartWorkflowOptions{
 		ID:        "reminder-workflow",
-		TaskQueue: app.ReminderTaskQueue,
+		TaskQueue: app.ReminderTaskQueueName,
 	}
 	createdAt := time.Now()
 	remindAt := time.Minute * time.Duration(nMins)
@@ -48,13 +42,13 @@ func UpdateWorkflow(workflowId string, runId string, phone string, nMinutes int)
 	}
 	defer c.Close()
 
-	signal := UpdateReminderSignal{
+	signal := app.UpdateReminderSignal{
 		Phone:    phone,
 		NMinutes: nMinutes,
 	}
 	ctx := context.Background()
 	var reminderDetails app.ReminderDetails
-	err = c.SignalWorkflow(ctx, workflowId, runId, app.UpdateReminderSignal, signal)
+	err = c.SignalWorkflow(ctx, workflowId, runId, app.UpdateReminderSignalChannelName, signal)
 	if err != nil {
 		log.Fatalln("Error sending the UpdateReminder Signal", err)
 		return reminderDetails, err
@@ -62,7 +56,7 @@ func UpdateWorkflow(workflowId string, runId string, phone string, nMinutes int)
 	return reminderDetails, err
 }
 
-func updateReminderDetails(reminderUpdate UpdateReminderSignal, reminderDetails app.ReminderDetails) app.ReminderDetails {
+func updateReminderDetails(reminderUpdate app.UpdateReminderSignal, reminderDetails app.ReminderDetails) app.ReminderDetails {
 	reminderDetails.NMinutes = time.Duration(reminderUpdate.NMinutes) * time.Minute
 	if reminderUpdate.Phone != "" {
 		reminderDetails.Phone = reminderUpdate.Phone

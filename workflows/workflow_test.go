@@ -2,6 +2,7 @@ package workflows
 
 import (
 	"reminders/app"
+	"reminders/app/activities"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -18,8 +19,8 @@ func Test_Workflow(t *testing.T) {
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
-	env.OnActivity(app.Create, mock.Anything, testDetails).Return(nil)
-	env.OnActivity(app.Delete, mock.Anything, testDetails).Return(nil)
+	env.OnActivity(activities.Create, mock.Anything, testDetails).Return(nil)
+	env.OnActivity(activities.Delete, mock.Anything, testDetails).Return(nil)
 	env.ExecuteWorkflow(MakeReminderWorkflow, testDetails)
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())

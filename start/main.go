@@ -21,7 +21,7 @@ func main() {
 	defer c.Close()
 	options := client.StartWorkflowOptions{
 		ID:        "reminder-workflow",
-		TaskQueue: app.ReminderTaskQueue,
+		TaskQueue: app.ReminderTaskQueueName,
 	}
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    time.Now(),

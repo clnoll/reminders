@@ -1,33 +1,34 @@
-package app
+package activities
 
 import (
 	"context"
 	"fmt"
+	"reminders/app"
 )
 
-func Create(ctx context.Context, reminderDetails ReminderDetails) error {
+func Create(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
 		"\nCreating reminder %s (%s) to alert at %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(TIME_FORMAT),
+		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil
 }
 
-func Update(ctx context.Context, reminderDetails ReminderDetails) error {
+func Update(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
 		"\nSnoozing reminder %s (%s) until %s. ReferenceId: %s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(TIME_FORMAT),
+		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
 		reminderDetails.ReminderId,
 	)
 	return nil
 }
 
-func Delete(ctx context.Context, reminderDetails ReminderDetails) error {
+func Delete(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
 		"\nDismissing reminder %s (%s). ReferenceId: %s\n",
 		reminderDetails.ReminderName,
@@ -37,7 +38,7 @@ func Delete(ctx context.Context, reminderDetails ReminderDetails) error {
 	return nil
 }
 
-func SendReminder(ctx context.Context, reminderDetails ReminderDetails) error {
+func SendReminder(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
 		"\nSending reminder: %s (%s)! ReferenceId: %s\n",
 		reminderDetails.ReminderName,

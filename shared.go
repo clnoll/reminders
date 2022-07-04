@@ -2,8 +2,8 @@ package app
 
 import "time"
 
-const ReminderTaskQueue = "REMINDER_TASK_QUEUE"
-const UpdateReminderSignal = "update-reminder-signal"
+const ReminderTaskQueueName = "REMINDER_TASK_QUEUE"
+const UpdateReminderSignalChannelName = "update-reminder-signal"
 
 const TIME_FORMAT = "Mon Jan 2 2006 15:04:05 MST"
 
@@ -23,6 +23,19 @@ type ReminderInput struct {
 	NMinutes   int
 }
 
-func GetReminderTime(createdAt time.Time, duration time.Duration) time.Time {
-	return createdAt.Add(duration)
+type CancelReminderSignal struct {
+	WorkflowId string
+	RunId      string
+}
+
+type UpdateReminderSignal struct {
+	NMinutes     int
+	ReminderText string
+	ReminderName string
+	Phone        string
+}
+
+func GetReminderTime(startTime time.Time, duration time.Duration) time.Time {
+	return startTime.Add(duration)
+}
 }

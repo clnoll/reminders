@@ -35,43 +35,39 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 	}
 
 	// Handle any incoming updates and/or wait until the reminder time has elapsed
-	childCtx, cancelHandler := workflow.WithCancel(ctx)
-	selector := workflow.NewSelector(ctx)
-	processed := false
+	var reminderUpdateVal app.UpdateReminderSignal
+	updateReminderChannel := workflow.GetSignalChannel(ctx, app.UpdateReminderSignalChannelName)
+	timerFired := false
+	for !timerFired && ctx.Err() == nil {
+		timerCtx, timerCancel := workflow.WithCancel(ctx)
+		timeToReminder := reminderDetails.GetMinutesToReminder(timerCtx)
+		timer := workflow.NewTimer(timerCtx, timeToReminder)
+		log.Println("Remind in", timeToReminder, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
+		workflow.NewSelector(timerCtx).
+			AddFuture(timer, func(f workflow.Future) {
+				err := f.Get(timerCtx, nil)
+				_ = workflow.ExecuteActivity(timerCtx, activities.SendReminder).Get(timerCtx, nil)
+				if err == nil {
+					log.Println("Reminder fired")
+					timerFired = true
+				} else if ctx.Err() != nil {
+					// if a timer returned an error then it was canceled
+					log.Println("Reminder canceled")
+				}
+			}).
+			AddReceive(updateReminderChannel, func(c workflow.ReceiveChannel, more bool) {
+				timerCancel() // Create a new timer even if the reminder time hasn't been updated
+				c.Receive(timerCtx, &reminderUpdateVal)
+				originalNMinutes := reminderDetails.NMinutes
+				updated := updateReminderDetails(timerCtx, &reminderUpdateVal, &reminderDetails)
+				log.Println("ReminderDetails updated: ", reminderDetails)
 
-	// Create a timer whose handler will send the reminder at the specified time
-	timerFuture := workflow.NewTimer(childCtx, reminderDetails.NMinutes)
-	log.Println("Created timer for", reminderDetails.NMinutes, "minutes")
-	selector.AddFuture(timerFuture, func(f workflow.Future) {
-		_ = workflow.ExecuteActivity(ctx, activities.SendReminder).Get(ctx, nil)
-		processed = true
-	})
-	// Watch for signals to update the reminder
-	for {
-		if processed {
-			return nil
-		}
-		var reminderUpdateVal app.UpdateReminderSignal
-		channel := workflow.GetSignalChannel(ctx, app.UpdateReminderSignalChannelName)
-		selector.AddReceive(channel, func(c workflow.ReceiveChannel, more bool) {
-			log.Println("Received signal on channel", app.UpdateReminderSignalChannelName)
-			c.Receive(ctx, &reminderUpdateVal)
-			updated := updateReminderDetails(reminderUpdateVal, reminderDetails)
-			log.Println("ReminderDetails updated: ", updated)
+				if updated.NMinutes != originalNMinutes {
+					log.Println("New reminder time set:", reminderDetails.ReminderTime.Format(app.TIME_FORMAT))
+				}
 
-			// If the reminder time was updated, cancel the existing timer and create a new one
-			if updated.NMinutes != reminderDetails.NMinutes {
-				cancelHandler()
-				log.Println("Cancelled existing timer.")
-				childCtx, cancelHandler = workflow.WithCancel(ctx)
-				timerFuture := workflow.NewTimer(childCtx, reminderDetails.NMinutes)
-				selector.AddFuture(timerFuture, func(f workflow.Future) {
-					_ = workflow.ExecuteActivity(ctx, activities.SendReminder).Get(ctx, nil)
-				})
-				log.Println("New Timer created.")
-			}
-		})
-		// Wait the timer or the update
-		selector.Select(ctx)
+			}).
+			Select(timerCtx)
 	}
+	return ctx.Err()
 }

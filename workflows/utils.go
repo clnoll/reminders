@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/workflow"
 )
 
 func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
@@ -20,14 +21,16 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 		TaskQueue: app.ReminderTaskQueueName,
 	}
 	createdAt := time.Now()
-	remindAt := time.Minute * time.Duration(nMins)
+	remindInMinutes := time.Minute * time.Duration(nMins)
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    createdAt,
-		NMinutes:     remindAt,
+		NMinutes:     remindInMinutes,
+		ReminderTime: createdAt.Add(remindInMinutes),
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
+	log.Println("Starting workflow to remind in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
 	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
@@ -56,8 +59,10 @@ func UpdateWorkflow(workflowId string, runId string, phone string, nMinutes int)
 	return reminderDetails, err
 }
 
-func updateReminderDetails(reminderUpdate app.UpdateReminderSignal, reminderDetails app.ReminderDetails) app.ReminderDetails {
-	reminderDetails.NMinutes = time.Duration(reminderUpdate.NMinutes) * time.Minute
+func updateReminderDetails(ctx workflow.Context, reminderUpdate *app.UpdateReminderSignal, reminderDetails *app.ReminderDetails) *app.ReminderDetails {
+	newReminderTime := time.Duration(reminderUpdate.NMinutes) * time.Minute
+	reminderDetails.NMinutes = newReminderTime
+	reminderDetails.ReminderTime = app.GetReminderTime(workflow.Now(ctx), newReminderTime)
 	if reminderUpdate.Phone != "" {
 		reminderDetails.Phone = reminderUpdate.Phone
 	}

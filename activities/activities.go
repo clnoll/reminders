@@ -40,10 +40,11 @@ func Delete(ctx context.Context, reminderDetails app.ReminderDetails) error {
 
 func SendReminder(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
-		"\nSending reminder: %s (%s)! ReferenceId: %s\n",
+		"\nSending reminder to %s: %s (%s)! ReferenceId: %s\n",
+		reminderDetails.Phone,
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		reminderDetails.ReminderId,
 	)
-	return nil
+	return app.SendViaWhatsapp(reminderDetails)
 }

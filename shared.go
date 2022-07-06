@@ -1,6 +1,11 @@
 package app
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -50,4 +55,37 @@ func (r *ReminderDetails) GetMinutesToReminder(ctx workflow.Context) time.Durati
 
 func (r *ReminderDetails) GetReminderTime() time.Time {
 	return r.ReminderTime
+}
+
+func SendViaWhatsapp(reminderDetails ReminderDetails) error {
+	url := WhatsappSendMessageUrl
+	auth := WhatsappAuth
+
+	data := fmt.Sprintf(`{
+		"messaging_product": "whatsapp",
+  		"recipient_type": "individual",
+  		"to": "%s",
+  		"type": "text",
+  		"text": {
+			"body": "%s: %s"
+		}
+	}`, reminderDetails.Phone, reminderDetails.ReminderName, reminderDetails.ReminderText)
+	log.Println("Sending WhatsApp reminder. url:", url, "data:", data)
+
+	var query = []byte(data)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(query))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", auth)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Panicked sending WhatsApp request")
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	log.Println("WhatsApp response received. status:", resp.Status, "headers:", resp.Header, "body:", string(body))
+
+	return nil
 }

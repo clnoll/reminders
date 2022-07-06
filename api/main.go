@@ -27,6 +27,7 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reminderInfo, workflowId, runId, err := workflows.StartWorkflow(input.Phone, input.NMinutes)
+	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

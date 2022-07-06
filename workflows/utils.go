@@ -25,12 +25,13 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    createdAt,
 		NMinutes:     remindInMinutes,
+		Phone:        phone,
 		ReminderTime: createdAt.Add(remindInMinutes),
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 		ReminderId:   "Test",
 	}
-	log.Println("Starting workflow to remind in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
+	log.Println("Starting workflow to remind", phone, "in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
 	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)

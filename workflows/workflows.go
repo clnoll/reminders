@@ -46,7 +46,7 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 		workflow.NewSelector(timerCtx).
 			AddFuture(timer, func(f workflow.Future) {
 				err := f.Get(timerCtx, nil)
-				_ = workflow.ExecuteActivity(timerCtx, activities.SendReminder).Get(timerCtx, nil)
+				_ = workflow.ExecuteActivity(timerCtx, activities.SendReminder, reminderDetails).Get(timerCtx, nil)
 				if err == nil {
 					log.Println("Reminder fired")
 					timerFired = true

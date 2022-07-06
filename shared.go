@@ -11,11 +11,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const ReminderTaskQueueName = "REMINDER_TASK_QUEUE"
-const UpdateReminderSignalChannelName = "update-reminder-signal"
-
-const TIME_FORMAT = "Mon Jan 2 2006 15:04:05 MST"
-
 type ReminderDetails struct {
 	CreatedAt    time.Time
 	NMinutes     time.Duration

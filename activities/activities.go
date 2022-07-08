@@ -46,5 +46,10 @@ func SendReminder(ctx context.Context, reminderDetails app.ReminderDetails) erro
 		reminderDetails.ReminderText,
 		reminderDetails.ReminderId,
 	)
-	return app.SendViaWhatsapp(reminderDetails)
+	message := makeReminderMessage(reminderDetails)
+	return app.SendWhatsappMessage(reminderDetails.Phone, message)
+}
+
+func makeReminderMessage(reminderDetails app.ReminderDetails) string {
+	return fmt.Sprintf("%s: %s", reminderDetails.ReminderName, reminderDetails.ReminderText)
 }

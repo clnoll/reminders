@@ -52,7 +52,7 @@ func (r *ReminderDetails) GetReminderTime() time.Time {
 	return r.ReminderTime
 }
 
-func SendViaWhatsapp(reminderDetails ReminderDetails) error {
+func SendWhatsappMessage(toPhone string, message string) error {
 	url := WhatsappSendMessageUrl
 	auth := WhatsappAuth
 
@@ -62,9 +62,9 @@ func SendViaWhatsapp(reminderDetails ReminderDetails) error {
   		"to": "%s",
   		"type": "text",
   		"text": {
-			"body": "%s: %s"
+			"body": "%s"
 		}
-	}`, reminderDetails.Phone, reminderDetails.ReminderName, reminderDetails.ReminderText)
+	}`, toPhone, message)
 	log.Println("Sending WhatsApp reminder. url:", url, "data:", data)
 
 	var query = []byte(data)

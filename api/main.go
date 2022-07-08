@@ -18,6 +18,11 @@ func ReminderListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		http.Error(w, "Bad request.", http.StatusBadRequest)
+		return
+	}
+
 	var input app.ReminderInput
 
 	err := json.NewDecoder(r.Body).Decode(&input)
@@ -64,13 +69,13 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 
 	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, input)
 	if err != nil {
-		log.Printf("failed to start workflow: %v", err)
+		log.Printf("Failed to update workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	log.Printf("Updated reminder for workflowId %s runId %s", workflowId, runId)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(
@@ -93,7 +98,7 @@ func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("Deleted reminder for workflowId %s runId %s", workflowId, runId)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
 		map[string]string{

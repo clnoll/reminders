@@ -26,22 +26,21 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderInfo, workflowId, runId, err := workflows.StartWorkflow(input.Phone, input.NMinutes)
+	reminderInfo, err := workflows.StartWorkflow(input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Created reminder for workflowId %s runId %s", workflowId, runId)
+	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"workflowId":   workflowId,
-			"runId":        runId,
-			"reminderId":   reminderInfo.ReminderId,
+			"workflowId":   reminderInfo.WorkflowId,
+			"runId":        reminderInfo.RunId,
 			"reminderTime": app.GetReminderTime(reminderInfo.CreatedAt, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
@@ -63,7 +62,7 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, input.Phone, input.NMinutes)
+	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, input)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -76,9 +75,8 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"workflowId":   workflowId,
-			"runId":        runId,
-			"reminderId":   reminderInfo.ReminderId,
+			"workflowId":   reminderInfo.WorkflowId,
+			"runId":        reminderInfo.RunId,
 			"reminderTime": app.GetReminderTime(reminderInfo.CreatedAt, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }

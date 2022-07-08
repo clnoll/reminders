@@ -8,43 +8,47 @@ import (
 
 func Create(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
-		"\nCreating reminder %s (%s) to alert at %s. ReferenceId: %s\n",
+		"\nCreating reminder %s (%s) to alert at %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
-		reminderDetails.ReminderId,
+		reminderDetails.WorkflowId,
+		reminderDetails.RunId,
 	)
 	return nil
 }
 
 func Update(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
-		"\nSnoozing reminder %s (%s) until %s. ReferenceId: %s\n",
+		"\nSnoozing reminder %s (%s) until %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
-		reminderDetails.ReminderId,
+		reminderDetails.WorkflowId,
+		reminderDetails.RunId,
 	)
 	return nil
 }
 
 func Delete(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
-		"\nDismissing reminder %s (%s). ReferenceId: %s\n",
+		"\nDismissing reminder %s (%s). workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderId,
+		reminderDetails.WorkflowId,
+		reminderDetails.RunId,
 	)
 	return nil
 }
 
 func SendReminder(ctx context.Context, reminderDetails app.ReminderDetails) error {
 	fmt.Printf(
-		"\nSending reminder to %s: %s (%s)! ReferenceId: %s\n",
+		"\nSending reminder to %s: %s (%s)! workflowId=%s runId=%s\n",
 		reminderDetails.Phone,
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReminderId,
+		reminderDetails.WorkflowId,
+		reminderDetails.RunId,
 	)
 	message := makeReminderMessage(reminderDetails)
 	return app.SendWhatsappMessage(reminderDetails.Phone, message)

@@ -10,7 +10,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string, error) {
+func StartWorkflow(input app.ReminderInput) (app.ReminderDetails, error) {
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
 		log.Fatalln("unable to create Temporal client", err)
@@ -21,25 +21,26 @@ func StartWorkflow(phone string, nMins int) (app.ReminderDetails, string, string
 		TaskQueue: app.ReminderTaskQueueName,
 	}
 	createdAt := time.Now()
-	remindInMinutes := time.Minute * time.Duration(nMins)
+	remindInMinutes := time.Minute * time.Duration(input.NMinutes)
 	reminderDetails := app.ReminderDetails{
 		CreatedAt:    createdAt,
 		NMinutes:     remindInMinutes,
-		Phone:        phone,
+		Phone:        input.Phone,
 		ReminderTime: createdAt.Add(remindInMinutes),
-		ReminderText: "Book return flights from Jakarta",
-		ReminderName: "Flights",
-		ReminderId:   "Test",
+		ReminderText: input.ReminderText,
+		ReminderName: input.ReminderName,
 	}
-	log.Println("Starting workflow to remind", phone, "in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
+	log.Println("Starting workflow to remind", input.Phone, "in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
 	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}
-	return reminderDetails, we.GetID(), we.GetRunID(), err
+	reminderDetails.RunId = we.GetRunID()
+	reminderDetails.WorkflowId = we.GetID()
+	return reminderDetails, err
 }
 
-func UpdateWorkflow(workflowId string, runId string, phone string, nMinutes int) (app.ReminderDetails, error) {
+func UpdateWorkflow(workflowId string, runId string, input app.ReminderInput) (app.ReminderDetails, error) {
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
 		log.Fatalln("unable to create Temporal client", err)
@@ -47,8 +48,10 @@ func UpdateWorkflow(workflowId string, runId string, phone string, nMinutes int)
 	defer c.Close()
 
 	signal := app.UpdateReminderSignal{
-		Phone:    phone,
-		NMinutes: nMinutes,
+		Phone:        input.Phone,
+		NMinutes:     input.NMinutes,
+		ReminderName: input.ReminderName,
+		ReminderText: input.ReminderText,
 	}
 	ctx := context.Background()
 	var reminderDetails app.ReminderDetails
@@ -90,17 +93,13 @@ func DeleteWorkflow(workflowId string, runId string) error {
 	return err
 }
 
-func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {
+func printResults(reminderDetails app.ReminderDetails, workflowId, runId string) {
 	log.Printf(
-		"\nCreating reminder for %s (%s) at %s. ReminderId: %s\n",
+		"\nCreating reminder for %s (%s) at %s. workflowId=%s runID=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes),
-		reminderDetails.ReminderId,
-	)
-	log.Printf(
-		"\nWorkflowID: %s RunID: %s\n",
-		workflowID,
-		runID,
+		workflowId,
+		runId,
 	)
 }

@@ -13,24 +13,20 @@ import (
 
 type ReminderDetails struct {
 	CreatedAt    time.Time
-	NMinutes     time.Duration
-	ReminderTime time.Time
-	ReminderText string
-	ReminderName string
-	ReminderId   string
-	Phone        string
+	NMinutes     time.Duration // editable
+	ReminderTime time.Time     // automatically updates
+	ReminderText string        // editable
+	ReminderName string        // editable
+	Phone        string        // editable
+	WorkflowId   string
+	RunId        string
 }
 
 type ReminderInput struct {
-	ReminderId string
-	RunId      string
-	Phone      string
-	NMinutes   int
-}
-
-type CancelReminderSignal struct {
-	WorkflowId string
-	RunId      string
+	NMinutes     int
+	ReminderText string
+	ReminderName string
+	Phone        string
 }
 
 type UpdateReminderSignal struct {

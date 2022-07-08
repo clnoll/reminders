@@ -17,7 +17,6 @@ func Test_Workflow(t *testing.T) {
 	testDetails := app.ReminderDetails{
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
-		ReminderId:   "Test",
 	}
 	env.OnActivity(activities.Create, mock.Anything, testDetails).Return(nil)
 	env.OnActivity(activities.Delete, mock.Anything, testDetails).Return(nil)

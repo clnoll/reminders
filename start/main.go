@@ -28,7 +28,6 @@ func main() {
 		NMinutes:     time.Second * 60,
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
-		ReminderId:   "Test",
 	}
 	we, err := c.ExecuteWorkflow(context.Background(), options, workflows.MakeReminderWorkflow, reminderDetails)
 	if err != nil {
@@ -39,17 +38,18 @@ func main() {
 
 // @@@SNIPEND
 
-func printResults(reminderDetails app.ReminderDetails, workflowID, runID string) {
+func printResults(reminderDetails app.ReminderDetails, workflowId, runId string) {
 	log.Printf(
-		"\nCreating reminder for %s (%s) at %s. ReminderId: %s\n",
+		"\nCreating reminder for %s (%s) at %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes),
-		reminderDetails.ReminderId,
+		workflowId,
+		runId,
 	)
 	log.Printf(
 		"\nWorkflowID: %s RunID: %s\n",
-		workflowID,
-		runID,
+		workflowId,
+		runId,
 	)
 }

@@ -119,6 +119,12 @@ func TestDeleteReminderHandler(t *testing.T) {
 	}
 }
 
+func TestWhatsappResponseHandlerCreate(t *testing.T) {
+	r := httptest.NewRecorder()
+	m := mux.NewRouter()
+	createReminderFromWhatsappMessage(t, r, m)
+}
+
 func createReminder(t *testing.T, r *httptest.ResponseRecorder, m *mux.Router) {
 	body := fmt.Sprintf(`{
 		"NMinutes": 1,
@@ -126,16 +132,66 @@ func createReminder(t *testing.T, r *httptest.ResponseRecorder, m *mux.Router) {
   		"ReminderName": "Flights",
   		"Phone": "15555555555"
 	}`)
+	post(t, r, m, "/reminders", CreateReminderHandler, body, http.StatusCreated)
+}
+
+func createReminderFromWhatsappMessage(t *testing.T, r *httptest.ResponseRecorder, m *mux.Router) {
+	body := fmt.Sprintf(`{
+		"object": "whatsapp_business_account",
+		"entry": [
+		  {
+			"id": "0",
+			"changes": [
+			  {
+				"field": "messages",
+				"value": {
+				  "messaging_product": "whatsapp",
+				  "metadata": {
+					"display_phone_number": "16505551111",
+					"phone_number_id": "123456123"
+				  },
+				  "contacts": [
+					{
+					  "profile": {
+						"name": "test user name"
+					  },
+					  "wa_id": "16315551181"
+					}
+				  ],
+				  "messages": [
+					{
+					  "from": "16315551181",
+					  "id": "ABGGFlA5Fpa",
+					  "timestamp": "1504902988",
+					  "type": "text",
+					  "text": {
+						"body": "New Reminder Family: call mom about test results: 3h 30m"
+					  }
+					}
+				  ]
+				}
+			  }
+			]
+		  }
+		]
+	}`)
+	post(t, r, m, "/external/reminders/whatsapp", WhatsappResponseHandler, body, http.StatusOK)
+}
+
+func post(
+	t *testing.T, r *httptest.ResponseRecorder, m *mux.Router,
+	url string, handler func(http.ResponseWriter, *http.Request,
+	), body string, statusExpected int) {
 	var query = []byte(body)
-	m.HandleFunc("/reminders", CreateReminderHandler)
-	req, err := http.NewRequest("POST", "/reminders", bytes.NewBuffer(query))
+	m.HandleFunc(url, handler)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(query))
 	if err != nil {
 		t.Fatal(err)
 	}
 	m.ServeHTTP(r, req)
 
-	if status := r.Code; status != http.StatusCreated {
-		t.Errorf("CreateReminderHandler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
+	if status := r.Code; status != statusExpected {
+		t.Errorf("WhatsappResponseHandler returned wrong status code: got %v want %v",
+			status, statusExpected)
 	}
 }

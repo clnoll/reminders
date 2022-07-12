@@ -12,7 +12,7 @@ import (
 )
 
 type ReminderDetails struct {
-	CreatedAt    time.Time
+	FromTime     time.Time
 	NMinutes     time.Duration // editable
 	ReminderTime time.Time     // automatically updates
 	ReminderText string        // editable
@@ -23,6 +23,7 @@ type ReminderDetails struct {
 }
 
 type ReminderInput struct {
+	FromTime     time.Time
 	NMinutes     int
 	ReminderText string
 	ReminderName string

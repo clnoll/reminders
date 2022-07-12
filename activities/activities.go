@@ -11,7 +11,7 @@ func Create(ctx context.Context, reminderDetails app.ReminderDetails) error {
 		"\nCreating reminder %s (%s) to alert at %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
+		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
 		reminderDetails.WorkflowId,
 		reminderDetails.RunId,
 	)
@@ -23,7 +23,7 @@ func Update(ctx context.Context, reminderDetails app.ReminderDetails) error {
 		"\nSnoozing reminder %s (%s) until %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
+		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
 		reminderDetails.WorkflowId,
 		reminderDetails.RunId,
 	)

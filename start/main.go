@@ -24,7 +24,7 @@ func main() {
 		TaskQueue: app.ReminderTaskQueueName,
 	}
 	reminderDetails := app.ReminderDetails{
-		CreatedAt:    time.Now(),
+		FromTime:     time.Now(),
 		NMinutes:     time.Second * 60,
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
@@ -43,7 +43,7 @@ func printResults(reminderDetails app.ReminderDetails, workflowId, runId string)
 		"\nCreating reminder for %s (%s) at %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes),
+		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
 		workflowId,
 		runId,
 	)

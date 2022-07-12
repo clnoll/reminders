@@ -20,13 +20,12 @@ func StartWorkflow(input app.ReminderInput) (app.ReminderDetails, error) {
 		ID:        "reminder-workflow",
 		TaskQueue: app.ReminderTaskQueueName,
 	}
-	createdAt := time.Now()
 	remindInMinutes := time.Minute * time.Duration(input.NMinutes)
 	reminderDetails := app.ReminderDetails{
-		CreatedAt:    createdAt,
+		FromTime:     input.FromTime,
 		NMinutes:     remindInMinutes,
 		Phone:        input.Phone,
-		ReminderTime: createdAt.Add(remindInMinutes),
+		ReminderTime: input.FromTime.Add(remindInMinutes),
 		ReminderText: input.ReminderText,
 		ReminderName: input.ReminderName,
 	}
@@ -98,7 +97,7 @@ func printResults(reminderDetails app.ReminderDetails, workflowId, runId string)
 		"\nCreating reminder for %s (%s) at %s. workflowId=%s runID=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.CreatedAt, reminderDetails.NMinutes),
+		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
 		workflowId,
 		runId,
 	)

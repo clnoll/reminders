@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"reminders/app"
+	"reminders/app/whatsapp"
 	"reminders/app/workflows"
 	"strconv"
 	"time"
@@ -145,7 +146,7 @@ func WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
 	err = doMessageAction(fromPhone, message, fromTime)
 
 	if err != nil {
-		app.SendWhatsappMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
+		whatsapp.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
 	}
 
@@ -174,7 +175,7 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 		return err
 	}
 	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
-	err = app.SendWhatsappMessage(
+	err = whatsapp.SendMessage(
 		phone,
 		fmt.Sprintf(
 			"Created reminder %s: %s at %s. workflowId=%s runId=%s",
@@ -187,7 +188,7 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 }
 
 func sendErrorMessage(phone string, message string) {
-	app.SendWhatsappMessage(phone, fmt.Sprintf(
+	whatsapp.SendMessage(phone, fmt.Sprintf(
 		`Error creating reminder: "%s". Please use the format "New Reminder <Reminder Name>: <Reminder Text>: <1H 30M>"`,
 		message,
 	))

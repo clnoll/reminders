@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reminders/app"
+	"reminders/app/whatsapp"
 )
 
 func Create(ctx context.Context, reminderDetails app.ReminderDetails) error {
@@ -51,7 +52,7 @@ func SendReminder(ctx context.Context, reminderDetails app.ReminderDetails) erro
 		reminderDetails.RunId,
 	)
 	message := makeReminderMessage(reminderDetails)
-	return app.SendWhatsappMessage(reminderDetails.Phone, message)
+	return whatsapp.SendMessage(reminderDetails.Phone, message)
 }
 
 func makeReminderMessage(reminderDetails app.ReminderDetails) string {

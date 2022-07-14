@@ -48,17 +48,16 @@ func TestUpdateReminderHandler(t *testing.T) {
 	createReminder(t, r, m)
 	createRespBody, _ := ioutil.ReadAll(r.Body)
 
-	results := gjson.GetManyBytes(createRespBody, "reminderTime", "workflowId", "runId")
+	results := gjson.GetManyBytes(createRespBody, "reminderTime", "referenceId")
 	createReminderTime := results[0].String()
-	workflowId := results[1].String()
-	runId := results[2].String()
+	referenceId := results[1].String()
 
 	// Send a PUT to update the reminder to remind even earlier
 	r = httptest.NewRecorder()
 	updateReq := fmt.Sprintf(`{"NMinutes": 0}`)
 	var query = []byte(updateReq)
-	url := fmt.Sprintf("/reminders/%s/%s", workflowId, runId)
-	m.HandleFunc("/reminders/{workflowId}/{runId}", UpdateReminderHandler)
+	url := fmt.Sprintf("/reminders/%s", referenceId)
+	m.HandleFunc("/reminders/{referenceId}", UpdateReminderHandler)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(query))
 	if err != nil {
 		t.Fatal(err)
@@ -95,14 +94,13 @@ func TestDeleteReminderHandler(t *testing.T) {
 	createReminder(t, r, m)
 	createRespBody, _ := ioutil.ReadAll(r.Body)
 
-	results := gjson.GetManyBytes(createRespBody, "workflowId", "runId")
-	workflowId := results[0].String()
-	runId := results[1].String()
+	results := gjson.GetManyBytes(createRespBody, "referenceId")
+	referenceId := results[0].String()
 
 	// Delete the reminder
 	r = httptest.NewRecorder()
-	url := fmt.Sprintf("/reminders/%s/%s", workflowId, runId)
-	m.HandleFunc("/reminders/{workflowId}/{runId}", DeleteReminderHandler)
+	url := fmt.Sprintf("/reminders/%s", referenceId)
+	m.HandleFunc("/reminders/{referenceId}", DeleteReminderHandler)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		t.Fatal(err)

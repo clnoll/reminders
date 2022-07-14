@@ -10,7 +10,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-func StartWorkflow(input app.ReminderInput) (app.ReminderDetails, error) {
+func StartWorkflow(input *app.ReminderInput) (app.ReminderDetails, error) {
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
 		log.Fatalln("unable to create Temporal client", err)
@@ -34,12 +34,18 @@ func StartWorkflow(input app.ReminderInput) (app.ReminderDetails, error) {
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}
-	reminderDetails.RunId = we.GetRunID()
-	reminderDetails.WorkflowId = we.GetID()
+	workflowId, runId := we.GetID(), we.GetRunID()
+	reminderDetails.RunId = runId
+	reminderDetails.WorkflowId = workflowId
+	referenceId, err := app.MakeReferenceId(workflowId, runId)
+	if err != nil {
+		return reminderDetails, err
+	}
+	reminderDetails.ReferenceId = referenceId
 	return reminderDetails, err
 }
 
-func UpdateWorkflow(workflowId string, runId string, input app.ReminderInput) (app.ReminderDetails, error) {
+func UpdateWorkflow(workflowId string, runId string, input *app.ReminderInput) (app.ReminderDetails, error) {
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
 		log.Fatalln("unable to create Temporal client", err)
@@ -82,12 +88,12 @@ func DeleteWorkflow(workflowId string, runId string) error {
 	// Delete the reminder
 	c, err := client.NewClient(client.Options{})
 	if err != nil {
-		log.Fatalln("unable to create Temporal client", err)
+		log.Fatalln("Unable to create Temporal client", err)
 	}
 	defer c.Close()
 	err = c.CancelWorkflow(context.Background(), workflowId, runId)
 	if err != nil {
-		log.Fatalln("error deleting Reminder workflow", workflowId, runId, err)
+		log.Fatalln("Error deleting Reminder workflow", workflowId, runId, err)
 	}
 	return err
 }

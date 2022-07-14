@@ -1,7 +1,12 @@
 package app
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"time"
+
+	"reminders/app/codec"
 
 	"go.temporal.io/sdk/workflow"
 )
@@ -44,4 +49,27 @@ func (r *ReminderDetails) GetMinutesToReminder(ctx workflow.Context) time.Durati
 
 func (r *ReminderDetails) GetReminderTime() time.Time {
 	return r.ReminderTime
+}
+
+func MakeReferenceId(workflowId string, runId string) (string, error) {
+	if workflowId == "" || runId == "" {
+		return "", errors.New(fmt.Sprintf("Unable to create referenceId from workflowId %s runId%s", workflowId, runId))
+	}
+	rawReferenceId := fmt.Sprintf("%s_%s", workflowId, runId)
+	return codec.Encode(rawReferenceId), nil
+}
+
+func GetInternalIdsFromReferenceId(referenceId string) (string, string, error) {
+	if referenceId == "" {
+		return "", "", errors.New("Missing ReferenceId.")
+	}
+	decoded, err := codec.Decode(referenceId)
+	if err != nil {
+		return "", "", err
+	}
+	idComponents := strings.Split(decoded, "_")
+	if len(idComponents) != 2 {
+		return "", "", errors.New(fmt.Sprintf("Unable to decode referenceId %s", referenceId))
+	}
+	return idComponents[0], idComponents[1], nil
 }

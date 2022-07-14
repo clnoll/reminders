@@ -36,7 +36,7 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input.FromTime = time.Now()
-	reminderInfo, err := workflows.StartWorkflow(input)
+	reminderInfo, err := workflows.StartWorkflow(&input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
@@ -49,8 +49,7 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"workflowId":   reminderInfo.WorkflowId,
-			"runId":        reminderInfo.RunId,
+			"referenceId":  reminderInfo.ReferenceId,
 			"reminderTime": app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
@@ -62,17 +61,21 @@ func GetReminderHandler(w http.ResponseWriter, r *http.Request) {
 
 func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	runId := vars["runId"]
-	workflowId := vars["workflowId"]
-	var input app.ReminderInput
-
-	err := json.NewDecoder(r.Body).Decode(&input)
+	referenceId := vars["referenceId"]
+	workflowId, runId, err := app.GetInternalIdsFromReferenceId(referenceId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, input)
+	var input app.ReminderInput
+	err = json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, &input)
 	if err != nil {
 		log.Printf("Failed to update workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -85,18 +88,22 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"workflowId":   reminderInfo.WorkflowId,
-			"runId":        reminderInfo.RunId,
+			"referenceId":  reminderInfo.ReferenceId,
 			"reminderTime": app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 
 func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	runId := vars["runId"]
-	workflowId := vars["workflowId"]
+	referenceId := vars["referenceId"]
 
-	err := workflows.DeleteWorkflow(workflowId, runId)
+	workflowId, runId, err := app.GetInternalIdsFromReferenceId(referenceId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = workflows.DeleteWorkflow(workflowId, runId)
 	if err != nil {
 		log.Printf("failed to delete workflow %s (runID %s): %v", workflowId, runId, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -107,9 +114,8 @@ func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"workflowId": workflowId,
-			"runId":      runId,
-			"status":     "cancelled",
+			"referenceId": referenceId,
+			"status":      "cancelled",
 		})
 }
 
@@ -168,7 +174,7 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 		ReminderName: reminderName,
 		Phone:        phone,
 	}
-	reminderInfo, err := workflows.StartWorkflow(input)
+	reminderInfo, err := workflows.StartWorkflow(&input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
@@ -178,10 +184,11 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 	err = whatsapp.SendMessage(
 		phone,
 		fmt.Sprintf(
-			"Created reminder %s: %s at %s. workflowId=%s runId=%s",
-			reminderInfo.ReminderName, reminderInfo.ReminderText,
+			"Created reminder %s: %s at %s. referenceId=%s",
+			reminderInfo.ReminderName,
+			reminderInfo.ReminderText,
 			app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
-			reminderInfo.WorkflowId, reminderInfo.RunId,
+			reminderInfo.ReferenceId,
 		),
 	)
 	return err
@@ -198,9 +205,9 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/reminders", ReminderListHandler).Methods("GET")
 	r.HandleFunc("/reminders", CreateReminderHandler).Methods("POST")
-	r.HandleFunc("/reminders/{workflowId}/{runId}", GetReminderHandler).Methods("GET")
-	r.HandleFunc("/reminders/{workflowId}/{runId}", UpdateReminderHandler).Methods("PUT")
-	r.HandleFunc("/reminders/{workflowId}/{runId}", DeleteReminderHandler).Methods("DELETE")
+	r.HandleFunc("/reminders/{referenceId}", GetReminderHandler).Methods("GET")
+	r.HandleFunc("/reminders/{referenceId}", UpdateReminderHandler).Methods("PUT")
+	r.HandleFunc("/reminders/{referenceId}", DeleteReminderHandler).Methods("DELETE")
 	r.HandleFunc("/external/reminders/whatsapp", WhatsappResponseHandler).Methods("POST")
 	http.Handle("/", r)
 

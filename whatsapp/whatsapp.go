@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,10 @@ import (
 
 var WhatsappAuth = fmt.Sprintf("Bearer %s", app.WhatsappToken)
 var SendMessageUrl = fmt.Sprintf("https://graph.facebook.com/v13.0/%s/messages", app.WhatsappAccountId)
+
+func WhatsappRequestError(resp *http.Response) error {
+	return errors.New(fmt.Sprintf("Error sending WhatsApp request. status=%s", resp.Status))
+}
 
 func SendMessage(toPhone string, message string) error {
 	url := SendMessageUrl
@@ -36,11 +41,14 @@ func SendMessage(toPhone string, message string) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Panicked sending WhatsApp request")
-		panic(err)
+		return err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Println("WhatsApp response received. status:", resp.Status, "headers:", resp.Header, "body:", string(body))
-
+	if resp.StatusCode >= 400 {
+		log.Println("Error sending WhatsApp request")
+		return WhatsappRequestError(resp)
+	}
 	return nil
 }

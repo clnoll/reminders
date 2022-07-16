@@ -154,9 +154,9 @@ func WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whatsapp.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func doMessageAction(phone string, message string, fromTime time.Time) error {

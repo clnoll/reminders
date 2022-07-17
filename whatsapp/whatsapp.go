@@ -13,11 +13,36 @@ import (
 var WhatsappAuth = fmt.Sprintf("Bearer %s", app.WhatsappToken)
 var SendMessageUrl = fmt.Sprintf("https://graph.facebook.com/v13.0/%s/messages", app.WhatsappAccountId)
 
+type WhatsappClientDefinition interface {
+	GetWhatsappClient() WhatsappClientDefinition
+	SendMessage(toPhone string, message string) error
+}
+
+type WhatsappClient struct {
+	WhatsappClientDefinition
+}
+
+type MockWhatsappClient struct {
+	WhatsappClientDefinition
+}
+
+func (f MockWhatsappClient) GetWhatsappClient() WhatsappClientDefinition {
+	return MockWhatsappClient{}
+}
+
+func (f MockWhatsappClient) SendMessage(toPhone string, message string) error {
+	return nil
+}
+
 func WhatsappRequestError(resp *http.Response) error {
 	return errors.New(fmt.Sprintf("Error sending WhatsApp request. status=%s", resp.Status))
 }
 
-func SendMessage(toPhone string, message string) error {
+func (w WhatsappClient) GetWhatsappClient() WhatsappClientDefinition {
+	return WhatsappClient{}
+}
+
+func (w WhatsappClient) SendMessage(toPhone string, message string) error {
 	url := SendMessageUrl
 	auth := WhatsappAuth
 

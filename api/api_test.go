@@ -7,42 +7,64 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reminders/app"
+	"reminders/app/whatsapp"
 	"testing"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
+	"go.temporal.io/sdk/testsuite"
 )
 
-func TestCreateReminderHandlerEmpty(t *testing.T) {
+const FAKE_FROM_PHONE = "16505551111"
+
+type UnitTestSuite struct {
+	suite.Suite
+	testsuite.WorkflowTestSuite
+
+	env *testsuite.TestWorkflowEnvironment
+}
+
+func (s *UnitTestSuite) SetupTest() {
+	s.env = s.NewTestWorkflowEnvironment()
+}
+
+func (s *UnitTestSuite) AfterTest(suiteName, testName string) {
+	s.env.AssertExpectations(s.T())
+}
+
+func TestUnitTestSuite(t *testing.T) {
+	suite.Run(t, new(UnitTestSuite))
+}
+
+func (t *UnitTestSuite) TestCreateReminderHandlerEmpty() {
 	// Sending an empty body to /reminders results in an error response.
 	req, err := http.NewRequest("POST", "/reminders", nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 
 	cr := httptest.NewRecorder()
 	m := mux.NewRouter()
-	m.HandleFunc("/reminders", CreateReminderHandler)
+	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}}
+	m.HandleFunc("/reminders", requestHandler.HandleCreate)
 	m.ServeHTTP(cr, req)
 
-	if status := cr.Code; status != http.StatusBadRequest {
-		t.Errorf("CreateReminderHandler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
+	status := cr.Code
+	t.True(status == http.StatusBadRequest, fmt.Sprintf("status = %v, expected %v", status, http.StatusBadRequest))
 }
 
-func TestCreateReminderHandler(t *testing.T) {
+func (t *UnitTestSuite) TestCreateReminderHandler() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
 	createReminder(t, r, m)
 	respBody, _ := ioutil.ReadAll(r.Body)
-	if results := gjson.GetBytes(respBody, "reminderTime").String(); results == "" {
-		t.Errorf("CreateReminderHandler returned an empty reminderTime")
-	}
+	reminderTime := gjson.GetBytes(respBody, "reminderTime").String()
+	t.True(reminderTime != "", "Empty reminder time.")
 }
 
-func TestUpdateReminderHandler(t *testing.T) {
+func (t *UnitTestSuite) TestUpdateReminderHandler() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
 	createReminder(t, r, m)
@@ -57,38 +79,36 @@ func TestUpdateReminderHandler(t *testing.T) {
 	updateReq := fmt.Sprintf(`{"NMinutes": 0}`)
 	var query = []byte(updateReq)
 	url := fmt.Sprintf("/reminders/%s", referenceId)
-	m.HandleFunc("/reminders/{referenceId}", UpdateReminderHandler)
+	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}}
+	m.HandleFunc("/reminders/{referenceId}", requestHandler.HandleUpdate)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(query))
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 
 	m.ServeHTTP(r, req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 
 	if status := r.Code; status != http.StatusAccepted {
-		t.Errorf("UpdateReminderHandler returned wrong status code: got %v want %v",
+		t.Fail("UpdateReminderHandler returned wrong status code: got %v want %v",
 			status, http.StatusAccepted)
 	}
 
 	updateRespBody, _ := ioutil.ReadAll(r.Body)
 	updateReminderTime := gjson.GetBytes(updateRespBody, "reminderTime").String()
 	if updateReminderTime == "" {
-		t.Errorf("UpdateReminderHandler returned an empty reminderTime.")
+		t.Fail("UpdateReminderHandler returned an empty reminderTime.")
 	}
 
 	// The reminder should now be set to remind sooner than the original reminder
 	createTs, _ := time.Parse(app.TIME_FORMAT, createReminderTime)
 	updateTs, _ := time.Parse(app.TIME_FORMAT, updateReminderTime)
-	if !(updateTs.Before(createTs)) {
-		t.Errorf("UpdateReminderHandler did not update the reminder: got %v want less than %v",
-			updateReminderTime, createReminderTime)
-	}
+	t.True(updateTs.Before(createTs), fmt.Sprintf("Expected %v to be after %v", createTs, updateTs))
 }
 
-func TestDeleteReminderHandler(t *testing.T) {
+func (t *UnitTestSuite) TestDeleteReminderHandler() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
 	createReminder(t, r, m)
@@ -100,40 +120,41 @@ func TestDeleteReminderHandler(t *testing.T) {
 	// Delete the reminder
 	r = httptest.NewRecorder()
 	url := fmt.Sprintf("/reminders/%s", referenceId)
-	m.HandleFunc("/reminders/{referenceId}", DeleteReminderHandler)
+	workflowRequestHandler := RequestHandler{whatsapp.MockWhatsappClient{}}
+	m.HandleFunc("/reminders/{referenceId}", workflowRequestHandler.HandleDelete)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 
 	m.ServeHTTP(r, req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 
-	if status := r.Code; status != http.StatusAccepted {
-		t.Errorf("DeleteReminderHandler returned wrong status code: got %v want %v",
-			status, http.StatusAccepted)
-	}
+	status := r.Code
+	t.True(status == http.StatusAccepted, fmt.Sprintf("status = %v, expected %v", status, http.StatusAccepted))
 }
 
-func TestWhatsappResponseHandlerCreate(t *testing.T) {
+func (t *UnitTestSuite) TestWhatsappResponseHandlerCreate() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
 	createReminderFromWhatsappMessage(t, r, m)
 }
 
-func createReminder(t *testing.T, r *httptest.ResponseRecorder, m *mux.Router) {
+func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) {
 	body := fmt.Sprintf(`{
 		"NMinutes": 1,
   		"ReminderText": "Book return flight",
   		"ReminderName": "Flights",
-  		"Phone": "15555555555"
-	}`)
-	post(t, r, m, "/reminders", CreateReminderHandler, body, http.StatusCreated)
+  		"Phone": "%s"
+	}`, FAKE_FROM_PHONE)
+	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}}
+	status := post(t, r, m, "/reminders", requestHandler.HandleCreate, body)
+	t.True(status == http.StatusCreated, fmt.Sprintf("status %v, expected %v", status, http.StatusCreated))
 }
 
-func createReminderFromWhatsappMessage(t *testing.T, r *httptest.ResponseRecorder, m *mux.Router) {
+func createReminderFromWhatsappMessage(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) {
 	body := fmt.Sprintf(`{
 		"object": "whatsapp_business_account",
 		"entry": [
@@ -153,12 +174,12 @@ func createReminderFromWhatsappMessage(t *testing.T, r *httptest.ResponseRecorde
 					  "profile": {
 						"name": "test user name"
 					  },
-					  "wa_id": "16315551181"
+					  "wa_id": "%s"
 					}
 				  ],
 				  "messages": [
 					{
-					  "from": "16315551181",
+					  "from": "%s",
 					  "id": "ABGGFlA5Fpa",
 					  "timestamp": "1504902988",
 					  "type": "text",
@@ -172,24 +193,22 @@ func createReminderFromWhatsappMessage(t *testing.T, r *httptest.ResponseRecorde
 			]
 		  }
 		]
-	}`)
-	post(t, r, m, "/external/reminders/whatsapp", WhatsappResponseHandler, body, http.StatusOK)
+	}`, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
+	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}}
+	status := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
+	t.True(status == http.StatusOK, fmt.Sprintf("status %v, expected %v", status, http.StatusOK))
 }
 
 func post(
-	t *testing.T, r *httptest.ResponseRecorder, m *mux.Router,
+	t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router,
 	url string, handler func(http.ResponseWriter, *http.Request,
-	), body string, statusExpected int) {
+	), body string) int {
 	var query = []byte(body)
 	m.HandleFunc(url, handler)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(query))
 	if err != nil {
-		t.Fatal(err)
+		t.Fail(err.Error())
 	}
 	m.ServeHTTP(r, req)
-
-	if status := r.Code; status != statusExpected {
-		t.Errorf("WhatsappResponseHandler returned wrong status code: got %v want %v",
-			status, statusExpected)
-	}
+	return r.Code
 }

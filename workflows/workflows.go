@@ -4,13 +4,14 @@ import (
 	"log"
 	"reminders/app"
 	"reminders/app/activities"
+	"reminders/app/whatsapp"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDetails) error {
+func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.WhatsappClientDefinition, reminderDetails app.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
@@ -46,7 +47,7 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails app.ReminderDeta
 		workflow.NewSelector(timerCtx).
 			AddFuture(timer, func(f workflow.Future) {
 				err := f.Get(timerCtx, nil)
-				_ = workflow.ExecuteActivity(timerCtx, activities.SendReminder, reminderDetails).Get(timerCtx, nil)
+				_ = workflow.ExecuteActivity(timerCtx, activities.SendReminder, wc.GetWhatsappClient(), reminderDetails).Get(timerCtx, nil)
 				if err == nil {
 					log.Println("Reminder fired")
 					timerFired = true

@@ -15,14 +15,15 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tidwall/gjson"
+	"go.temporal.io/sdk/client"
 )
 
-func ReminderListHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) ReminderListHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "RemindersList: %s\n", "")
 }
 
-func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		http.Error(w, "Bad request.", http.StatusBadRequest)
 		return
@@ -36,7 +37,13 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input.FromTime = time.Now()
-	reminderInfo, err := workflows.StartWorkflow(&input)
+
+	c, err := client.NewClient(client.Options{})
+	if err != nil {
+		log.Fatalln("unable to create Temporal client", err)
+	}
+	defer c.Close()
+	reminderInfo, err := workflows.StartWorkflow(c, h.w.GetWhatsappClient(), &input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
@@ -54,12 +61,12 @@ func CreateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
-func GetReminderHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) GetReminderHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, `{"alive": true}`)
 }
 
-func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	referenceId := vars["referenceId"]
 	workflowId, runId, err := app.GetInternalIdsFromReferenceId(referenceId)
@@ -75,7 +82,13 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderInfo, err := workflows.UpdateWorkflow(workflowId, runId, &input)
+	c, err := client.NewClient(client.Options{})
+	if err != nil {
+		log.Fatalln("unable to create Temporal client", err)
+	}
+	defer c.Close()
+
+	reminderInfo, err := workflows.UpdateWorkflow(c, workflowId, runId, &input)
 	if err != nil {
 		log.Printf("Failed to update workflow: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,7 +106,7 @@ func UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
-func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	referenceId := vars["referenceId"]
 
@@ -103,9 +116,16 @@ func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = workflows.DeleteWorkflow(workflowId, runId)
+	c, err := client.NewClient(client.Options{})
 	if err != nil {
-		log.Printf("failed to delete workflow %s (runID %s): %v", workflowId, runId, err)
+		log.Fatalln("Unable to create Temporal client", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer c.Close()
+
+	err = workflows.DeleteWorkflow(c, h.w.GetWhatsappClient(), workflowId, runId)
+	if err != nil {
+		log.Printf("Failed to delete workflow %s (runID %s): %v", workflowId, runId, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +139,7 @@ func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
-func WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("WhatsApp message received.")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -149,24 +169,31 @@ func WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fromTime := time.Unix(timestampInt, 0)
 
-	err = doMessageAction(fromPhone, message, fromTime)
+	c, err := client.NewClient(client.Options{})
+	if err != nil {
+		log.Fatalln("unable to create Temporal client", err)
+	}
+	defer c.Close()
+
+	wc := h.w.GetWhatsappClient()
+	err = doMessageAction(c, wc, fromPhone, message, fromTime)
 
 	if err != nil {
-		whatsapp.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
+		wc.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func doMessageAction(phone string, message string, fromTime time.Time) error {
+func doMessageAction(c client.Client, wc whatsapp.WhatsappClientDefinition, phone string, message string, fromTime time.Time) error {
 	if name, text, nMinutes, err := app.ParseCreateReminderMessage(message); err == nil {
-		return createReminderFromMessage(phone, name, text, nMinutes, fromTime)
+		return createReminderFromMessage(c, wc, phone, name, text, nMinutes, fromTime)
 	}
 	return app.ReminderParseError(fmt.Sprintf("Unable to create reminder from request %s", message))
 }
 
-func createReminderFromMessage(phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) error {
+func createReminderFromMessage(c client.Client, wc whatsapp.WhatsappClientDefinition, phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) error {
 	input := app.ReminderInput{
 		FromTime:     fromTime,
 		NMinutes:     nMinutes,
@@ -174,14 +201,14 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 		ReminderName: reminderName,
 		Phone:        phone,
 	}
-	reminderInfo, err := workflows.StartWorkflow(&input)
+	reminderInfo, err := workflows.StartWorkflow(c, wc, &input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("failed to start workflow: %v", err)
 		return err
 	}
 	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
-	err = whatsapp.SendMessage(
+	err = wc.SendMessage(
 		phone,
 		fmt.Sprintf(
 			"Created reminder %s: %s at %s. referenceId=%s",
@@ -194,21 +221,50 @@ func createReminderFromMessage(phone string, reminderName string, reminderText s
 	return err
 }
 
-func sendErrorMessage(phone string, message string) {
-	whatsapp.SendMessage(phone, fmt.Sprintf(
+func sendErrorMessage(wc whatsapp.WhatsappClient, phone string, message string) {
+	wc.SendMessage(phone, fmt.Sprintf(
 		`Error creating reminder: "%s". Please use the format "New Reminder <Reminder Name>: <Reminder Text>: <1H 30M>"`,
 		message,
 	))
 }
 
+type RequestHandler struct {
+	w whatsapp.WhatsappClientDefinition
+}
+
+func (h RequestHandler) HandleList(writer http.ResponseWriter, reader *http.Request) {
+	h.DeleteReminderHandler(writer, reader)
+}
+
+func (h RequestHandler) HandleCreate(writer http.ResponseWriter, reader *http.Request) {
+	h.CreateReminderHandler(writer, reader)
+}
+
+func (h RequestHandler) HandleGet(writer http.ResponseWriter, reader *http.Request) {
+	h.GetReminderHandler(writer, reader)
+}
+
+func (h RequestHandler) HandleUpdate(writer http.ResponseWriter, reader *http.Request) {
+	h.UpdateReminderHandler(writer, reader)
+}
+
+func (h RequestHandler) HandleDelete(writer http.ResponseWriter, reader *http.Request) {
+	h.DeleteReminderHandler(writer, reader)
+}
+
+func (h RequestHandler) HandleWhatsappCreate(writer http.ResponseWriter, reader *http.Request) {
+	h.WhatsappResponseHandler(writer, reader)
+}
+
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/reminders", ReminderListHandler).Methods("GET")
-	r.HandleFunc("/reminders", CreateReminderHandler).Methods("POST")
-	r.HandleFunc("/reminders/{referenceId}", GetReminderHandler).Methods("GET")
-	r.HandleFunc("/reminders/{referenceId}", UpdateReminderHandler).Methods("PUT")
-	r.HandleFunc("/reminders/{referenceId}", DeleteReminderHandler).Methods("DELETE")
-	r.HandleFunc("/external/reminders/whatsapp", WhatsappResponseHandler).Methods("POST")
+	requestHandler := RequestHandler{whatsapp.WhatsappClient{}}
+	r.HandleFunc("/reminders", requestHandler.HandleList).Methods("GET")
+	r.HandleFunc("/reminders", requestHandler.HandleCreate).Methods("POST")
+	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleGet).Methods("GET")
+	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleUpdate).Methods("PUT")
+	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleDelete).Methods("DELETE")
+	r.HandleFunc("/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate).Methods("POST")
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":8000", r))

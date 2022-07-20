@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,7 +17,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tidwall/gjson"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 )
 
 func (h *RequestHandler) ReminderListHandler(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +111,7 @@ func (h *RequestHandler) UpdateReminderHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("?????????????????????????????DeleteReminderHandler")
 	vars := mux.Vars(r)
 	referenceId := vars["referenceId"]
 
@@ -116,7 +121,7 @@ func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	c, err := client.NewClient(client.Options{})
+	c, err := h.c.GetClient()
 	if err != nil {
 		log.Fatalln("Unable to create Temporal client", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -230,6 +235,74 @@ func sendErrorMessage(wc whatsapp.WhatsappClient, phone string, message string) 
 
 type RequestHandler struct {
 	w whatsapp.WhatsappClientDefinition
+	c WorkflowClientDefinition
+}
+
+type WorkflowClientDefinition interface {
+	GetClient() (client.Client, error)
+	client.Client
+}
+
+type WorkflowClient struct {
+	client.Client
+}
+
+type MockWorkflowClient struct {
+	client.Client
+}
+
+func (f MockWorkflowClient) GetClient() (client.Client, error) {
+	return MockWorkflowClient{}, nil
+}
+
+type MockEncodedValue struct {
+	value string
+}
+
+func (b MockEncodedValue) Get(valuePtr interface{}) error {
+	if !b.HasValue() {
+		return errors.New("No value!")
+	}
+	valuePtr = b.value
+	return nil
+}
+
+// HasValue return whether there is value
+func (b MockEncodedValue) HasValue() bool {
+	return true
+}
+
+// // HasValue return whether there is value
+// func (b MockEncodedValue) HasValue() bool {
+// 	return b.value != nil
+// }
+
+func (f MockWorkflowClient) QueryWorkflow(ctx context.Context, workflowID string, runID string, queryType string, args ...interface{}) (converter.EncodedValue, error) {
+	log.Print("?????????????????????????????????")
+	if queryType == "getPhone" {
+		ev := MockEncodedValue{"12345"}
+		return ev, nil
+	}
+	return nil, nil
+}
+
+func (f MockWorkflowClient) DescribeWorkflowExecution(ctx context.Context, workflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error) {
+	c, _ := client.NewClient(client.Options{})
+	return c.DescribeWorkflowExecution(ctx, workflowID, runID)
+}
+
+func (f MockWorkflowClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+	c, _ := client.NewClient(client.Options{})
+	return c.CancelWorkflow(ctx, workflowID, runID)
+}
+
+func (f MockWorkflowClient) Close() {
+	c, _ := client.NewClient(client.Options{})
+	c.Close()
+}
+
+func (w WorkflowClient) GetClient() (client.Client, error) {
+	return client.NewClient(client.Options{})
 }
 
 func (h RequestHandler) HandleList(writer http.ResponseWriter, reader *http.Request) {
@@ -258,7 +331,7 @@ func (h RequestHandler) HandleWhatsappCreate(writer http.ResponseWriter, reader 
 
 func main() {
 	r := mux.NewRouter()
-	requestHandler := RequestHandler{whatsapp.WhatsappClient{}}
+	requestHandler := RequestHandler{whatsapp.WhatsappClient{}, WorkflowClient{}}
 	r.HandleFunc("/reminders", requestHandler.HandleList).Methods("GET")
 	r.HandleFunc("/reminders", requestHandler.HandleCreate).Methods("POST")
 	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleGet).Methods("GET")

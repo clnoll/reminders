@@ -7,9 +7,24 @@ import (
 	"reminders/app/whatsapp"
 	"time"
 
+	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
+
+type WorkflowClientDefinition interface{}
+
+type WorkflowClient struct{ WorkflowClientDefinition }
+
+type MockWorkflowClient struct{ WorkflowClientDefinition }
+
+func (f MockWorkflowClient) GetWorkflowClient() (WorkflowClientDefinition, error) {
+	return MockWorkflowClient{}, nil
+}
+
+func (w WorkflowClient) GetWorkflowClient() (WorkflowClientDefinition, error) {
+	return client.NewClient(client.Options{})
+}
 
 func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.WhatsappClientDefinition, reminderDetails app.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
@@ -26,11 +41,18 @@ func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.WhatsappClientDefini
 		// Temporal retries failures by default, this is just an example.
 		RetryPolicy: retrypolicy,
 	}
-
 	ctx = workflow.WithActivityOptions(ctx, options)
 
+	// Set query handlers
+	err := workflow.SetQueryHandler(ctx, "getPhone", func() string {
+		return reminderDetails.Phone
+	})
+	if err != nil {
+		return err
+	}
+
 	// Create a reminder
-	err := workflow.ExecuteActivity(ctx, activities.Create, reminderDetails).Get(ctx, nil)
+	err = workflow.ExecuteActivity(ctx, activities.Create, reminderDetails).Get(ctx, nil)
 	if err != nil {
 		return err
 	}

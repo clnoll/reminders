@@ -97,6 +97,7 @@ func workflowStatusIsDone(c client.Client, ctx context.Context, workflowId strin
 
 func getPhone(c client.Client, ctx context.Context, workflowId string, runId string) (string, error) {
 	toPhone, err := c.QueryWorkflow(ctx, workflowId, runId, "getPhone")
+	log.Printf("ERR!!!!!!!!!!!!!!!!! querying - %s", err)
 	if err != nil {
 		return "", err
 	}

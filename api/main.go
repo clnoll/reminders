@@ -55,10 +55,16 @@ func (h *RequestHandler) CreateReminderHandler(w http.ResponseWriter, r *http.Re
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	makeReminderResponse(w, reminderInfo)
+}
+
+func makeReminderResponse(w http.ResponseWriter, r utils.ReminderDetails) {
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"referenceId":  reminderInfo.ReferenceId,
-			"reminderTime": utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
+			"referenceId":  r.ReferenceId,
+			"reminderName": r.ReminderName,
+			"reminderText": r.ReminderText,
+			"reminderTime": utils.GetReminderTime(r.FromTime, r.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 
@@ -99,12 +105,7 @@ func (h *RequestHandler) UpdateReminderHandler(w http.ResponseWriter, r *http.Re
 	log.Printf("Updated reminder for workflowId %s runId %s", workflowId, runId)
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
-
-	json.NewEncoder(w).Encode(
-		map[string]string{
-			"referenceId":  reminderInfo.ReferenceId,
-			"reminderTime": utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
-		})
+	makeReminderResponse(w, reminderInfo)
 }
 
 func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
@@ -177,27 +178,29 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	defer c.Close()
 
 	wc := h.w.GetWhatsappClient()
-	err = doMessageAction(c, wc, fromPhone, message, fromTime)
+	reminderInfo, err := doMessageAction(c, wc, fromPhone, message, fromTime)
 
 	if err != nil {
 		wc.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
+		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
 	} else {
 		w.WriteHeader(http.StatusOK)
+		makeReminderResponse(w, reminderInfo)
 	}
 }
 
-func doMessageAction(c client.Client, wc whatsapp.IWhatsappClient, phone string, message string, fromTime time.Time) error {
+func doMessageAction(c client.Client, wc whatsapp.IWhatsappClient, phone string, message string, fromTime time.Time) (utils.ReminderDetails, error) {
 	if name, text, nMinutes, err := app.ParseCreateReminderMessage(message); err == nil {
 		return createReminderFromMessage(c, wc, phone, name, text, nMinutes, fromTime)
 	}
 	if referenceId, nMinutes, err := app.ParseUpdateReminderMessage(message); err == nil {
 		return updateReminderFromMessage(c, wc, phone, referenceId, nMinutes, fromTime)
 	}
-	return app.ReminderParseError(fmt.Sprintf("Unable to create reminder from request %s", message))
+	return utils.ReminderDetails{}, app.ReminderParseError(fmt.Sprintf("Unable to create reminder from request %s", message))
 }
 
-func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) error {
+func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) (utils.ReminderDetails, error) {
 	input := utils.ReminderInput{
 		FromTime:     fromTime,
 		NMinutes:     nMinutes,
@@ -209,7 +212,7 @@ func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
 		log.Printf("Failed to start workflow: %v", err)
-		return err
+		return reminderInfo, err
 	}
 	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
 	err = wc.SendMessage(
@@ -222,14 +225,14 @@ func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 			reminderInfo.ReferenceId,
 		),
 	)
-	return err
+	return reminderInfo, err
 }
 
-func updateReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, referenceId string, nMinutes int, fromTime time.Time) error {
+func updateReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, referenceId string, nMinutes int, fromTime time.Time) (utils.ReminderDetails, error) {
 	workflowId, runId, err := utils.GetInternalIdsFromReferenceId(referenceId)
 	if err != nil {
 		log.Printf("Failed to update workflow; unrecognized reference ID: %s", referenceId)
-		return err
+		return utils.ReminderDetails{}, err
 	}
 	log.Printf("Updating reminder for Phone %s. workflowId=%s runId=%s", phone, workflowId, runId)
 	input := utils.ReminderInput{
@@ -240,7 +243,7 @@ func updateReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 	reminderDetails, err := workflows.UpdateWorkflow(c, workflowId, runId, &input)
 	if err != nil {
 		log.Printf("Failed to update workflow: %v", err)
-		return err
+		return utils.ReminderDetails{}, err
 	}
 	log.Printf("Updated reminder for workflowId %s runId %s", reminderDetails.WorkflowId, reminderDetails.RunId)
 	err = wc.SendMessage(
@@ -253,7 +256,7 @@ func updateReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 			reminderDetails.ReferenceId,
 		),
 	)
-	return err
+	return reminderDetails, err
 }
 
 func sendErrorMessage(wc whatsapp.WhatsappClient, phone string, message string) {

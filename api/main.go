@@ -191,6 +191,9 @@ func doMessageAction(c client.Client, wc whatsapp.IWhatsappClient, phone string,
 	if name, text, nMinutes, err := app.ParseCreateReminderMessage(message); err == nil {
 		return createReminderFromMessage(c, wc, phone, name, text, nMinutes, fromTime)
 	}
+	if referenceId, nMinutes, err := app.ParseUpdateReminderMessage(message); err == nil {
+		return updateReminderFromMessage(c, wc, phone, referenceId, nMinutes, fromTime)
+	}
 	return app.ReminderParseError(fmt.Sprintf("Unable to create reminder from request %s", message))
 }
 
@@ -205,7 +208,7 @@ func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 	reminderInfo, err := workflows.StartWorkflow(c, wc, &input)
 	log.Printf("Creating reminder for Phone %s", input.Phone)
 	if err != nil {
-		log.Printf("failed to start workflow: %v", err)
+		log.Printf("Failed to start workflow: %v", err)
 		return err
 	}
 	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
@@ -217,6 +220,37 @@ func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, pho
 			reminderInfo.ReminderText,
 			utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 			reminderInfo.ReferenceId,
+		),
+	)
+	return err
+}
+
+func updateReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, referenceId string, nMinutes int, fromTime time.Time) error {
+	workflowId, runId, err := utils.GetInternalIdsFromReferenceId(referenceId)
+	if err != nil {
+		log.Printf("Failed to update workflow; unrecognized reference ID: %s", referenceId)
+		return err
+	}
+	log.Printf("Updating reminder for Phone %s. workflowId=%s runId=%s", phone, workflowId, runId)
+	input := utils.ReminderInput{
+		FromTime: fromTime,
+		NMinutes: nMinutes,
+		Phone:    phone,
+	}
+	reminderDetails, err := workflows.UpdateWorkflow(c, workflowId, runId, &input)
+	if err != nil {
+		log.Printf("Failed to update workflow: %v", err)
+		return err
+	}
+	log.Printf("Updated reminder for workflowId %s runId %s", reminderDetails.WorkflowId, reminderDetails.RunId)
+	err = wc.SendMessage(
+		phone,
+		fmt.Sprintf(
+			"Updated reminder %s: %s at %s. referenceId=%s",
+			reminderDetails.ReminderName,
+			reminderDetails.ReminderText,
+			utils.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes).Format(app.TIME_FORMAT),
+			reminderDetails.ReferenceId,
 		),
 	)
 	return err

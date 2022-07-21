@@ -148,7 +148,14 @@ func (t *UnitTestSuite) TestDeleteReminderHandler() {
 func (t *UnitTestSuite) TestWhatsappResponseHandlerCreate() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
-	createReminderFromWhatsappMessage(t, r, m)
+	sendWhatsappMessageReminderRequest(t, r, m, whatsappCreateBody)
+}
+
+func (t *UnitTestSuite) TestWhatsappResponseHandlerUpdate() {
+	r := httptest.NewRecorder()
+	m := mux.NewRouter()
+	sendWhatsappMessageReminderRequest(t, r, m, whatsappCreateBody)
+	sendWhatsappMessageReminderRequest(t, r, m, whatsappUpdateBody)
 }
 
 func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) {
@@ -163,46 +170,7 @@ func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Route
 	t.True(status == http.StatusCreated, fmt.Sprintf("status %v, expected %v", status, http.StatusCreated))
 }
 
-func createReminderFromWhatsappMessage(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) {
-	body := fmt.Sprintf(`{
-		"object": "whatsapp_business_account",
-		"entry": [
-		  {
-			"id": "0",
-			"changes": [
-			  {
-				"field": "messages",
-				"value": {
-				  "messaging_product": "whatsapp",
-				  "metadata": {
-					"display_phone_number": "16505551111",
-					"phone_number_id": "123456123"
-				  },
-				  "contacts": [
-					{
-					  "profile": {
-						"name": "test user name"
-					  },
-					  "wa_id": "%s"
-					}
-				  ],
-				  "messages": [
-					{
-					  "from": "%s",
-					  "id": "ABGGFlA5Fpa",
-					  "timestamp": "1504902988",
-					  "type": "text",
-					  "text": {
-						"body": "New Reminder Family: call mom about test results: 3h 30m"
-					  }
-					}
-				  ]
-				}
-			  }
-			]
-		  }
-		]
-	}`, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
+func sendWhatsappMessageReminderRequest(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router, body string) {
 	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	status := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
 	t.True(status == http.StatusOK, fmt.Sprintf("status %v, expected %v", status, http.StatusOK))
@@ -221,3 +189,88 @@ func post(
 	m.ServeHTTP(r, req)
 	return r.Code
 }
+
+var whatsappCreateBody = fmt.Sprintf(`{
+	"object": "whatsapp_business_account",
+	"entry": [
+	  {
+		"id": "0",
+		"changes": [
+		  {
+			"field": "messages",
+			"value": {
+			  "messaging_product": "whatsapp",
+			  "metadata": {
+				"display_phone_number": "16505551111",
+				"phone_number_id": "123456123"
+			  },
+			  "contacts": [
+				{
+				  "profile": {
+					"name": "test user name"
+				  },
+				  "wa_id": "%s"
+				}
+			  ],
+			  "messages": [
+				{
+				  "from": "%s",
+				  "id": "ABGGFlA5Fpa",
+				  "timestamp": "1504902988",
+				  "type": "text",
+				  "text": {
+					"body": "New Reminder Family: call mom about test results: 3h 30m"
+				  }
+				}
+			  ]
+			}
+		  }
+		]
+	  }
+	]
+}`, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
+
+var whatsappUpdateBody = fmt.Sprintf(`{
+	"object": "whatsapp_business_account",
+	"entry": [
+		{
+		"id": "0",
+		"changes": [
+			{
+			"value": {
+				"messaging_product": "whatsapp",
+				"metadata": {
+				"display_phone_number": "16505551111",
+				"phone_number_id": "123456123"
+				},
+				"contacts": [
+				{
+					"profile": {
+					"name": "test user name"
+					},
+					"wa_id": "%s"
+				}
+				],
+				"messages": [
+				{
+					"context": {
+					"from": "%s",
+					"id": "ABGGFlA5Fpa"
+					},
+					"from": "%s",
+					"id": "wamid.HBgLMTUwMjc0MTI0ODAVAgASGBQzRUIwMkJDMDQ5MkNCMzc1NUY0NgA=",
+					"timestamp": "1657724009",
+					"text": {
+					"body": "Update XXXXXXX: 0h 5m"
+					},
+					"type": "text"
+				}
+				]
+			},
+			"field": "messages"
+			}
+		]
+		}
+	]
+	}
+`, FAKE_FROM_PHONE, FAKE_FROM_PHONE, FAKE_FROM_PHONE)

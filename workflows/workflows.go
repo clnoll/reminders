@@ -4,6 +4,7 @@ import (
 	"log"
 	"reminders/app"
 	"reminders/app/activities"
+	"reminders/app/utils"
 	"reminders/app/whatsapp"
 	"time"
 
@@ -26,7 +27,7 @@ func (w WorkflowClient) GetWorkflowClient() (WorkflowClientDefinition, error) {
 	return client.NewClient(client.Options{})
 }
 
-func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.WhatsappClientDefinition, reminderDetails app.ReminderDetails) error {
+func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.IWhatsappClient, reminderDetails utils.ReminderDetails) error {
 	// RetryPolicy specifies how to automatically handle retries if an Activity fails.
 	retrypolicy := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
@@ -58,7 +59,7 @@ func MakeReminderWorkflow(ctx workflow.Context, wc whatsapp.WhatsappClientDefini
 	}
 
 	// Handle any incoming updates and/or wait until the reminder time has elapsed
-	var reminderUpdateVal app.UpdateReminderSignal
+	var reminderUpdateVal utils.UpdateReminderSignal
 	updateReminderChannel := workflow.GetSignalChannel(ctx, app.UpdateReminderSignalChannelName)
 	timerFired := false
 	for !timerFired && ctx.Err() == nil {

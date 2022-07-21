@@ -1,9 +1,8 @@
 package workflows
 
 import (
-	"reminders/app"
 	"reminders/app/activities"
-	"reminders/app/whatsapp"
+	"reminders/app/utils"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -15,11 +14,11 @@ func Test_Workflow(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
 	// Mock activity implementation
-	testDetails := app.ReminderDetails{
+	testDetails := utils.ReminderDetails{
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 	}
-	wc := whatsapp.MockWhatsappClient{}
+	wc := utils.MockWhatsappClient{}
 	env.OnActivity(activities.Create, mock.Anything, testDetails).Return(nil)
 	env.OnActivity(activities.Delete, mock.Anything, testDetails).Return(nil)
 	env.ExecuteWorkflow(MakeReminderWorkflow, wc, testDetails)

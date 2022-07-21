@@ -8,6 +8,7 @@ import (
 	"go.temporal.io/sdk/client"
 
 	"reminders/app"
+	"reminders/app/utils"
 	"reminders/app/workflows"
 )
 
@@ -23,7 +24,7 @@ func main() {
 		ID:        "reminder-workflow",
 		TaskQueue: app.ReminderTaskQueueName,
 	}
-	reminderDetails := app.ReminderDetails{
+	reminderDetails := utils.ReminderDetails{
 		FromTime:     time.Now(),
 		NMinutes:     time.Second * 60,
 		ReminderText: "Book return flights from Jakarta",
@@ -38,12 +39,12 @@ func main() {
 
 // @@@SNIPEND
 
-func printResults(reminderDetails app.ReminderDetails, workflowId, runId string) {
+func printResults(reminderDetails utils.ReminderDetails, workflowId, runId string) {
 	log.Printf(
 		"\nCreating reminder for %s (%s) at %s. workflowId=%s runId=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
+		utils.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
 		workflowId,
 		runId,
 	)

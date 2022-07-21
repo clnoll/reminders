@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"reminders/app"
+	"reminders/app/utils"
 	"reminders/app/whatsapp"
 	"time"
 
@@ -13,13 +14,13 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func StartWorkflow(c client.Client, wc whatsapp.WhatsappClientDefinition, input *app.ReminderInput) (app.ReminderDetails, error) {
+func StartWorkflow(c client.Client, wc whatsapp.IWhatsappClient, input *utils.ReminderInput) (utils.ReminderDetails, error) {
 	options := client.StartWorkflowOptions{
 		ID:        "reminder-workflow",
 		TaskQueue: app.ReminderTaskQueueName,
 	}
 	remindInMinutes := time.Minute * time.Duration(input.NMinutes)
-	reminderDetails := app.ReminderDetails{
+	reminderDetails := utils.ReminderDetails{
 		FromTime:     input.FromTime,
 		NMinutes:     remindInMinutes,
 		Phone:        input.Phone,
@@ -35,7 +36,7 @@ func StartWorkflow(c client.Client, wc whatsapp.WhatsappClientDefinition, input 
 	workflowId, runId := we.GetID(), we.GetRunID()
 	reminderDetails.RunId = runId
 	reminderDetails.WorkflowId = workflowId
-	referenceId, err := app.MakeReferenceId(workflowId, runId)
+	referenceId, err := utils.MakeReferenceId(workflowId, runId)
 	if err != nil {
 		return reminderDetails, err
 	}
@@ -43,15 +44,15 @@ func StartWorkflow(c client.Client, wc whatsapp.WhatsappClientDefinition, input 
 	return reminderDetails, err
 }
 
-func UpdateWorkflow(c client.Client, workflowId string, runId string, input *app.ReminderInput) (app.ReminderDetails, error) {
-	signal := app.UpdateReminderSignal{
+func UpdateWorkflow(c client.Client, workflowId string, runId string, input *utils.ReminderInput) (utils.ReminderDetails, error) {
+	signal := utils.UpdateReminderSignal{
 		Phone:        input.Phone,
 		NMinutes:     input.NMinutes,
 		ReminderName: input.ReminderName,
 		ReminderText: input.ReminderText,
 	}
 	ctx := context.Background()
-	var reminderDetails app.ReminderDetails
+	var reminderDetails utils.ReminderDetails
 	err := c.SignalWorkflow(ctx, workflowId, runId, app.UpdateReminderSignalChannelName, signal)
 	if err != nil {
 		log.Fatalln("Error sending the UpdateReminder Signal", err)
@@ -60,10 +61,10 @@ func UpdateWorkflow(c client.Client, workflowId string, runId string, input *app
 	return reminderDetails, err
 }
 
-func updateReminderDetails(ctx workflow.Context, reminderUpdate *app.UpdateReminderSignal, reminderDetails *app.ReminderDetails) *app.ReminderDetails {
+func updateReminderDetails(ctx workflow.Context, reminderUpdate *utils.UpdateReminderSignal, reminderDetails *utils.ReminderDetails) *utils.ReminderDetails {
 	newReminderTime := time.Duration(reminderUpdate.NMinutes) * time.Minute
 	reminderDetails.NMinutes = newReminderTime
-	reminderDetails.ReminderTime = app.GetReminderTime(workflow.Now(ctx), newReminderTime)
+	reminderDetails.ReminderTime = utils.GetReminderTime(workflow.Now(ctx), newReminderTime)
 	if reminderUpdate.Phone != "" {
 		reminderDetails.Phone = reminderUpdate.Phone
 	}
@@ -106,7 +107,7 @@ func getPhone(c client.Client, ctx context.Context, workflowId string, runId str
 	return result, err
 }
 
-func DeleteWorkflow(c client.Client, wc whatsapp.WhatsappClientDefinition, workflowId string, runId string) error {
+func DeleteWorkflow(c client.Client, wc whatsapp.IWhatsappClient, workflowId string, runId string) error {
 	ctx := context.Background()
 
 	status, done, err := workflowStatusIsDone(c, ctx, workflowId, runId)
@@ -131,12 +132,12 @@ func DeleteWorkflow(c client.Client, wc whatsapp.WhatsappClientDefinition, workf
 	return c.CancelWorkflow(ctx, workflowId, runId)
 }
 
-func printResults(reminderDetails app.ReminderDetails, workflowId, runId string) {
+func printResults(reminderDetails utils.ReminderDetails, workflowId, runId string) {
 	log.Printf(
 		"\nCreating reminder for %s (%s) at %s. workflowId=%s runID=%s\n",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		app.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
+		utils.GetReminderTime(reminderDetails.FromTime, reminderDetails.NMinutes),
 		workflowId,
 		runId,
 	)

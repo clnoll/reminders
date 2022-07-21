@@ -1,15 +1,14 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"reminders/app"
+	"reminders/app/utils"
 	"reminders/app/whatsapp"
 	"reminders/app/workflows"
 	"strconv"
@@ -17,9 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tidwall/gjson"
-	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/converter"
 )
 
 func (h *RequestHandler) ReminderListHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +30,7 @@ func (h *RequestHandler) CreateReminderHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var input app.ReminderInput
+	var input utils.ReminderInput
 
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
@@ -61,7 +58,7 @@ func (h *RequestHandler) CreateReminderHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(
 		map[string]string{
 			"referenceId":  reminderInfo.ReferenceId,
-			"reminderTime": app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
+			"reminderTime": utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 
@@ -73,13 +70,13 @@ func (h *RequestHandler) GetReminderHandler(w http.ResponseWriter, r *http.Reque
 func (h *RequestHandler) UpdateReminderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	referenceId := vars["referenceId"]
-	workflowId, runId, err := app.GetInternalIdsFromReferenceId(referenceId)
+	workflowId, runId, err := utils.GetInternalIdsFromReferenceId(referenceId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var input app.ReminderInput
+	var input utils.ReminderInput
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -106,16 +103,15 @@ func (h *RequestHandler) UpdateReminderHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(
 		map[string]string{
 			"referenceId":  reminderInfo.ReferenceId,
-			"reminderTime": app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
+			"reminderTime": utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 
 func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("?????????????????????????????DeleteReminderHandler")
 	vars := mux.Vars(r)
 	referenceId := vars["referenceId"]
 
-	workflowId, runId, err := app.GetInternalIdsFromReferenceId(referenceId)
+	workflowId, runId, err := utils.GetInternalIdsFromReferenceId(referenceId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -191,15 +187,15 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-func doMessageAction(c client.Client, wc whatsapp.WhatsappClientDefinition, phone string, message string, fromTime time.Time) error {
+func doMessageAction(c client.Client, wc whatsapp.IWhatsappClient, phone string, message string, fromTime time.Time) error {
 	if name, text, nMinutes, err := app.ParseCreateReminderMessage(message); err == nil {
 		return createReminderFromMessage(c, wc, phone, name, text, nMinutes, fromTime)
 	}
 	return app.ReminderParseError(fmt.Sprintf("Unable to create reminder from request %s", message))
 }
 
-func createReminderFromMessage(c client.Client, wc whatsapp.WhatsappClientDefinition, phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) error {
-	input := app.ReminderInput{
+func createReminderFromMessage(c client.Client, wc whatsapp.IWhatsappClient, phone string, reminderName string, reminderText string, nMinutes int, fromTime time.Time) error {
+	input := utils.ReminderInput{
 		FromTime:     fromTime,
 		NMinutes:     nMinutes,
 		ReminderText: reminderText,
@@ -219,7 +215,7 @@ func createReminderFromMessage(c client.Client, wc whatsapp.WhatsappClientDefini
 			"Created reminder %s: %s at %s. referenceId=%s",
 			reminderInfo.ReminderName,
 			reminderInfo.ReminderText,
-			app.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
+			utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),
 			reminderInfo.ReferenceId,
 		),
 	)
@@ -234,71 +230,17 @@ func sendErrorMessage(wc whatsapp.WhatsappClient, phone string, message string) 
 }
 
 type RequestHandler struct {
-	w whatsapp.WhatsappClientDefinition
-	c WorkflowClientDefinition
+	w whatsapp.IWhatsappClient
+	c IWorkflowClient
 }
 
-type WorkflowClientDefinition interface {
+type IWorkflowClient interface {
 	GetClient() (client.Client, error)
 	client.Client
 }
 
 type WorkflowClient struct {
 	client.Client
-}
-
-type MockWorkflowClient struct {
-	client.Client
-}
-
-func (f MockWorkflowClient) GetClient() (client.Client, error) {
-	return MockWorkflowClient{}, nil
-}
-
-type MockEncodedValue struct {
-	value string
-}
-
-func (b MockEncodedValue) Get(valuePtr interface{}) error {
-	if !b.HasValue() {
-		return errors.New("No value!")
-	}
-	valuePtr = b.value
-	return nil
-}
-
-// HasValue return whether there is value
-func (b MockEncodedValue) HasValue() bool {
-	return true
-}
-
-// // HasValue return whether there is value
-// func (b MockEncodedValue) HasValue() bool {
-// 	return b.value != nil
-// }
-
-func (f MockWorkflowClient) QueryWorkflow(ctx context.Context, workflowID string, runID string, queryType string, args ...interface{}) (converter.EncodedValue, error) {
-	log.Print("?????????????????????????????????")
-	if queryType == "getPhone" {
-		ev := MockEncodedValue{"12345"}
-		return ev, nil
-	}
-	return nil, nil
-}
-
-func (f MockWorkflowClient) DescribeWorkflowExecution(ctx context.Context, workflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error) {
-	c, _ := client.NewClient(client.Options{})
-	return c.DescribeWorkflowExecution(ctx, workflowID, runID)
-}
-
-func (f MockWorkflowClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
-	c, _ := client.NewClient(client.Options{})
-	return c.CancelWorkflow(ctx, workflowID, runID)
-}
-
-func (f MockWorkflowClient) Close() {
-	c, _ := client.NewClient(client.Options{})
-	c.Close()
 }
 
 func (w WorkflowClient) GetClient() (client.Client, error) {

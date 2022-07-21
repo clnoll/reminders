@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reminders/app"
-	"reminders/app/whatsapp"
+	"reminders/app/utils"
 	"testing"
 	"time"
 
@@ -47,7 +47,7 @@ func (t *UnitTestSuite) TestCreateReminderHandlerEmpty() {
 
 	cr := httptest.NewRecorder()
 	m := mux.NewRouter()
-	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}, MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders", requestHandler.HandleCreate)
 	m.ServeHTTP(cr, req)
 
@@ -79,7 +79,7 @@ func (t *UnitTestSuite) TestUpdateReminderHandler() {
 	updateReq := fmt.Sprintf(`{"NMinutes": 0}`)
 	var query = []byte(updateReq)
 	url := fmt.Sprintf("/reminders/%s", referenceId)
-	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}, MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders/{referenceId}", requestHandler.HandleUpdate)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(query))
 	if err != nil {
@@ -129,7 +129,7 @@ func (t *UnitTestSuite) TestDeleteReminderHandler() {
 	// Delete the reminder
 	r = httptest.NewRecorder()
 	url := fmt.Sprintf("/reminders/%s", referenceId)
-	workflowRequestHandler := RequestHandler{whatsapp.MockWhatsappClient{}, MockWorkflowClient{}}
+	workflowRequestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders/{referenceId}", workflowRequestHandler.HandleDelete)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -158,7 +158,7 @@ func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Route
   		"ReminderName": "Flights",
   		"Phone": "%s"
 	}`, FAKE_FROM_PHONE)
-	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}, MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	status := post(t, r, m, "/reminders", requestHandler.HandleCreate, body)
 	t.True(status == http.StatusCreated, fmt.Sprintf("status %v, expected %v", status, http.StatusCreated))
 }
@@ -203,58 +203,10 @@ func createReminderFromWhatsappMessage(t *UnitTestSuite, r *httptest.ResponseRec
 		  }
 		]
 	}`, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
-	requestHandler := RequestHandler{whatsapp.MockWhatsappClient{}, MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	status := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
 	t.True(status == http.StatusOK, fmt.Sprintf("status %v, expected %v", status, http.StatusOK))
 }
-
-// func updateReminderFromWhatsappMessage() {
-// 	body := fmt.Sprintf(`{
-// 		"object": "whatsapp_business_account",
-// 		"entry": [
-// 		  {
-// 			"id": "0",
-// 			"changes": [
-// 			  {
-// 				"value": {
-// 				  "messaging_product": "whatsapp",
-// 				  "metadata": {
-// 					"display_phone_number": "16505551111",
-// 					"phone_number_id": "123456123"
-// 				  },
-// 				  "contacts": [
-// 					{
-// 					  "profile": {
-// 						"name": "test user name"
-// 					  },
-// 					  "wa_id": "%s"
-// 					}
-// 				  ],
-// 				  "messages": [
-// 					{
-// 					  "context": {
-// 						"from": "%s",
-// 						"id": "ABGGFlA5Fpa"
-// 					  },
-// 					  "from": "%s",
-// 					  "id": "wamid.HBgLMTUwMjc0MTI0ODAVAgASGBQzRUIwMkJDMDQ5MkNCMzc1NUY0NgA=",
-// 					  "timestamp": "1657724009",
-// 					  "text": {
-// 						"body": "Reply!"
-// 					  },
-// 					  "type": "text"
-// 					}
-// 				  ]
-// 				},
-// 				"field": "messages"
-// 			  }
-// 			]
-// 		  }
-// 		]
-// 	  }
-// 	`, FAKE_FROM_PHONE, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
-
-// }
 
 func post(
 	t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router,

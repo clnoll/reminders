@@ -7,5 +7,8 @@ run-server:
 run-worker:
 	$(WITH_ENV) go run worker/main.go
 
+temporal:
+	docker-compose -f docker-compose/docker-compose.yml up
+
 test:
 	go test ./...

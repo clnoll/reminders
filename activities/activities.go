@@ -44,7 +44,7 @@ func Delete(ctx context.Context, reminderDetails utils.ReminderDetails) error {
 	return nil
 }
 
-func SendReminder(ctx context.Context, wc whatsapp.IWhatsappClient, reminderDetails utils.ReminderDetails) error {
+func SendReminder(ctx context.Context, reminderDetails utils.ReminderDetails) error {
 	fmt.Printf(
 		"\nSending reminder to %s: %s (%s)! workflowId=%s runId=%s\n",
 		reminderDetails.Phone,
@@ -54,7 +54,7 @@ func SendReminder(ctx context.Context, wc whatsapp.IWhatsappClient, reminderDeta
 		reminderDetails.RunId,
 	)
 	message := makeReminderMessage(reminderDetails)
-	return wc.SendMessage(reminderDetails.Phone, message)
+	return whatsapp.WhatsappClient.SendMessage(reminderDetails.Phone, message)
 }
 
 func makeReminderMessage(reminderDetails utils.ReminderDetails) string {

@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"errors"
-	"reminders/app/whatsapp"
 
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
@@ -59,18 +58,4 @@ func (f MockWorkflowClient) CancelWorkflow(ctx context.Context, workflowID strin
 func (f MockWorkflowClient) Close() {
 	c, _ := client.NewClient(client.Options{})
 	c.Close()
-}
-
-// Whatsapp Client
-
-type MockWhatsappClient struct {
-	whatsapp.IWhatsappClient
-}
-
-func (f MockWhatsappClient) GetWhatsappClient() whatsapp.IWhatsappClient {
-	return MockWhatsappClient{}
-}
-
-func (f MockWhatsappClient) SendMessage(toPhone string, message string) error {
-	return nil
 }

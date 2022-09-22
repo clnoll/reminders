@@ -10,5 +10,8 @@ run-worker:
 temporal:
 	docker-compose -f docker-compose/docker-compose.yml up
 
+
+test: export ENV = TEST
+
 test:
 	go test ./...

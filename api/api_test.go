@@ -48,7 +48,7 @@ func (t *UnitTestSuite) TestCreateReminderHandlerEmpty() {
 
 	cr := httptest.NewRecorder()
 	m := mux.NewRouter()
-	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders", requestHandler.HandleCreate)
 	m.ServeHTTP(cr, req)
 
@@ -76,7 +76,7 @@ func (t *UnitTestSuite) TestUpdateReminderHandler() {
 	updateReq := fmt.Sprintf(`{"NMinutes": 0}`)
 	var query = []byte(updateReq)
 	url := fmt.Sprintf("/reminders/%s", referenceId)
-	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders/{referenceId}", requestHandler.HandleUpdate)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(query))
 	if err != nil {
@@ -122,7 +122,7 @@ func (t *UnitTestSuite) TestDeleteReminderHandler() {
 	// Delete the reminder
 	r = httptest.NewRecorder()
 	url := fmt.Sprintf("/reminders/%s", resp.ReferenceId)
-	workflowRequestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
+	workflowRequestHandler := RequestHandler{utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders/{referenceId}", workflowRequestHandler.HandleDelete)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -165,14 +165,14 @@ func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Route
   		"ReminderName": "Flights",
   		"Phone": "%s"
 	}`, FAKE_FROM_PHONE)
-	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWorkflowClient{}}
 	status, resp := post(t, r, m, "/reminders", requestHandler.HandleCreate, body)
 	t.True(status == http.StatusCreated, fmt.Sprintf("status %v, expected %v", status, http.StatusCreated))
 	return resp
 }
 
 func sendWhatsappMessageReminderRequest(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router, body string) {
-	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
+	requestHandler := RequestHandler{utils.MockWorkflowClient{}}
 	status, _ := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
 	t.True(status == http.StatusOK, fmt.Sprintf("status %v, expected %v", status, http.StatusOK))
 }

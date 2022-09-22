@@ -18,10 +18,9 @@ func Test_Workflow(t *testing.T) {
 		ReminderText: "Book return flights from Jakarta",
 		ReminderName: "Flights",
 	}
-	wc := utils.MockWhatsappClient{}
 	env.OnActivity(activities.Create, mock.Anything, testDetails).Return(nil)
 	env.OnActivity(activities.Delete, mock.Anything, testDetails).Return(nil)
-	env.ExecuteWorkflow(MakeReminderWorkflow, wc, testDetails)
+	env.ExecuteWorkflow(MakeReminderWorkflow, testDetails)
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())
 }

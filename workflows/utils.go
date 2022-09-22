@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func StartWorkflow(c client.Client, wc whatsapp.IWhatsappClient, input *utils.ReminderInput) (utils.ReminderDetails, error) {
+func StartWorkflow(c client.Client, input *utils.ReminderInput) (utils.ReminderDetails, error) {
 	options := client.StartWorkflowOptions{
 		ID:        "reminder-workflow",
 		TaskQueue: app.ReminderTaskQueueName,
@@ -29,7 +29,7 @@ func StartWorkflow(c client.Client, wc whatsapp.IWhatsappClient, input *utils.Re
 		ReminderName: input.ReminderName,
 	}
 	log.Println("Starting workflow to remind", input.Phone, "in", remindInMinutes, "minutes, at", reminderDetails.GetReminderTime().Format(app.TIME_FORMAT))
-	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, wc, reminderDetails)
+	we, err := c.ExecuteWorkflow(context.Background(), options, MakeReminderWorkflow, reminderDetails)
 	if err != nil {
 		log.Fatalln("error starting Reminder workflow", err)
 	}

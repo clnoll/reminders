@@ -7,11 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"reminders/app"
 )
-
-var WhatsappAuth = fmt.Sprintf("Bearer %s", app.WhatsappToken)
-var SendMessageUrl = fmt.Sprintf("https://graph.facebook.com/v13.0/%s/messages", app.WhatsappAccountId)
 
 func WhatsappRequestError(resp *http.Response) error {
 	return errors.New(fmt.Sprintf("Error sending WhatsApp request. status=%s", resp.Status))
@@ -22,12 +18,13 @@ type IWhatsappClient interface {
 }
 
 type _LiveWhatsappClient struct {
-	IWhatsappClient
+	AuthToken string
+	AccountId string
 }
 
 func (w _LiveWhatsappClient) SendMessage(toPhone string, message string) error {
-	url := SendMessageUrl
-	auth := WhatsappAuth
+	url := fmt.Sprintf("https://graph.facebook.com/v13.0/%s/messages", w.AccountId)
+	auth := fmt.Sprintf("Bearer %s", w.AuthToken)
 
 	data := fmt.Sprintf(`{
 		"messaging_product": "whatsapp",
@@ -62,7 +59,8 @@ func (w _LiveWhatsappClient) SendMessage(toPhone string, message string) error {
 }
 
 type _MockWhatsappClient struct {
-	IWhatsappClient
+	AuthToken string
+	AccountId string
 }
 
 func (f _MockWhatsappClient) SendMessage(toPhone string, message string) error {

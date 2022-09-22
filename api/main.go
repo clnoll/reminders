@@ -125,7 +125,7 @@ func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Re
 	}
 	defer c.Close()
 
-	err = workflows.DeleteWorkflow(c, whatsapp.WhatsappClient, workflowId, runId)
+	err = workflows.DeleteWorkflow(c, whatsapp.GetWhatsappClient(), workflowId, runId)
 	if err != nil {
 		log.Printf("Failed to delete workflow %s (runID %s): %v", workflowId, runId, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -180,7 +180,7 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	reminderInfo, err := doMessageAction(c, fromPhone, message, fromTime)
 
 	if err != nil {
-		whatsapp.WhatsappClient.SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
+		whatsapp.GetWhatsappClient().SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
 		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
 	} else {
@@ -214,7 +214,7 @@ func createReminderFromMessage(c client.Client, phone string, reminderName strin
 		return reminderInfo, err
 	}
 	log.Printf("Created reminder for workflowId %s runId %s", reminderInfo.WorkflowId, reminderInfo.RunId)
-	err = whatsapp.WhatsappClient.SendMessage(
+	err = whatsapp.GetWhatsappClient().SendMessage(
 		phone,
 		fmt.Sprintf(
 			"Created reminder %s: %s at %s. referenceId=%s",
@@ -245,7 +245,7 @@ func updateReminderFromMessage(c client.Client, phone string, referenceId string
 		return utils.ReminderDetails{}, err
 	}
 	log.Printf("Updated reminder for workflowId %s runId %s", reminderDetails.WorkflowId, reminderDetails.RunId)
-	err = whatsapp.WhatsappClient.SendMessage(
+	err = whatsapp.GetWhatsappClient().SendMessage(
 		phone,
 		fmt.Sprintf(
 			"Updated reminder %s: %s at %s. referenceId=%s",

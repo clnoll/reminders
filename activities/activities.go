@@ -54,12 +54,12 @@ func SendReminder(ctx context.Context, reminderDetails utils.ReminderDetails) er
 		reminderDetails.RunId,
 	)
 	message := makeReminderMessage(reminderDetails)
-	return whatsapp.WhatsappClient.SendMessage(reminderDetails.Phone, message)
+	return whatsapp.GetWhatsappClient().SendMessage(reminderDetails.Phone, message)
 }
 
 func makeReminderMessage(reminderDetails utils.ReminderDetails) string {
 	return fmt.Sprintf(
-		"%s: %s\nReference ID: %s",
+		"%s: %s (Reference ID: %s)",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
 		reminderDetails.ReferenceId,

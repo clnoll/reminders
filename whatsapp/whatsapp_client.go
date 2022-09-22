@@ -4,15 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"reminders/app"
+
+	"golang.org/x/exp/slices"
 )
 
-var WhatsappClient = GetWhatsappClient()
-
 func GetWhatsappClient() IWhatsappClient {
-	if app.ENV == "PROD" {
-		return _LiveWhatsappClient{}
+	if slices.Contains([]string{"PROD", "DEV"}, app.ENV) {
+		return _LiveWhatsappClient{
+			app.WhatsappToken,
+			app.WhatsappAccountId,
+		}
 	} else {
-		return _MockWhatsappClient{}
+		return _MockWhatsappClient{"", ""}
 	}
 }
 

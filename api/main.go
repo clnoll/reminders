@@ -61,10 +61,10 @@ func (h *RequestHandler) CreateReminderHandler(w http.ResponseWriter, r *http.Re
 func makeReminderResponse(w http.ResponseWriter, r utils.ReminderDetails) {
 	json.NewEncoder(w).Encode(
 		map[string]string{
-			"referenceId":  r.ReferenceId,
-			"reminderName": r.ReminderName,
-			"reminderText": r.ReminderText,
-			"reminderTime": utils.GetReminderTime(r.FromTime, r.NMinutes).Format(app.TIME_FORMAT),
+			"ReferenceId":  r.ReferenceId,
+			"ReminderName": r.ReminderName,
+			"ReminderText": r.ReminderText,
+			"ReminderTime": utils.GetReminderTime(r.FromTime, r.NMinutes).Format(app.TIME_FORMAT),
 		})
 }
 

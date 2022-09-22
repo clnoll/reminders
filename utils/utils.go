@@ -32,6 +32,13 @@ type ReminderInput struct {
 	ReferenceId  string
 }
 
+type ReminderResponse struct {
+	ReminderTime string
+	ReminderText string
+	ReminderName string
+	ReferenceId  string
+}
+
 type UpdateReminderSignal struct {
 	NMinutes     int
 	ReminderText string

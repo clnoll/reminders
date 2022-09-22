@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -58,21 +59,17 @@ func (t *UnitTestSuite) TestCreateReminderHandlerEmpty() {
 func (t *UnitTestSuite) TestCreateReminderHandler() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
-	createReminder(t, r, m)
-	respBody, _ := ioutil.ReadAll(r.Body)
-	reminderTime := gjson.GetBytes(respBody, "reminderTime").String()
-	t.True(reminderTime != "", "Empty reminder time.")
+	resp := createReminder(t, r, m)
+	t.True(resp.ReminderTime != "", "Empty reminder time.")
 }
 
 func (t *UnitTestSuite) TestUpdateReminderHandler() {
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
-	createReminder(t, r, m)
-	createRespBody, _ := ioutil.ReadAll(r.Body)
+	resp := createReminder(t, r, m)
 
-	results := gjson.GetManyBytes(createRespBody, "reminderTime", "referenceId")
-	createReminderTime := results[0].String()
-	referenceId := results[1].String()
+	createReminderTime := resp.ReminderTime
+	referenceId := resp.ReferenceId
 
 	// Send a PUT to update the reminder to remind even earlier
 	r = httptest.NewRecorder()
@@ -97,9 +94,9 @@ func (t *UnitTestSuite) TestUpdateReminderHandler() {
 	}
 
 	updateRespBody, _ := ioutil.ReadAll(r.Body)
-	updateReminderTime := gjson.GetBytes(updateRespBody, "reminderTime").String()
+	updateReminderTime := gjson.GetBytes(updateRespBody, "ReminderTime").String()
 	if updateReminderTime == "" {
-		t.Fail("UpdateReminderHandler returned an empty reminderTime.")
+		t.Fail("UpdateReminderHandler returned an empty ReminderTime.")
 	}
 
 	// The reminder should now be set to remind sooner than the original reminder
@@ -120,15 +117,11 @@ func (t *UnitTestSuite) TestDeleteReminderHandler() {
 
 	r := httptest.NewRecorder()
 	m := mux.NewRouter()
-	createReminder(t, r, m)
-	createRespBody, _ := ioutil.ReadAll(r.Body)
-
-	results := gjson.GetManyBytes(createRespBody, "referenceId")
-	referenceId := results[0].String()
+	resp := createReminder(t, r, m)
 
 	// Delete the reminder
 	r = httptest.NewRecorder()
-	url := fmt.Sprintf("/reminders/%s", referenceId)
+	url := fmt.Sprintf("/reminders/%s", resp.ReferenceId)
 	workflowRequestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
 	m.HandleFunc("/reminders/{referenceId}", workflowRequestHandler.HandleDelete)
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -158,7 +151,14 @@ func (t *UnitTestSuite) TestWhatsappResponseHandlerUpdate() {
 	sendWhatsappMessageReminderRequest(t, r, m, whatsappUpdateBody)
 }
 
-func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) {
+func (t *UnitTestSuite) TestWhatsappResponseHandlerDelete() {
+	r := httptest.NewRecorder()
+	m := mux.NewRouter()
+	sendWhatsappMessageReminderRequest(t, r, m, whatsappCreateBody)
+	sendWhatsappMessageReminderRequest(t, r, m, whatsappDeleteBody)
+}
+
+func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router) utils.ReminderResponse {
 	body := fmt.Sprintf(`{
 		"NMinutes": 1,
   		"ReminderText": "Book return flight",
@@ -166,20 +166,21 @@ func createReminder(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Route
   		"Phone": "%s"
 	}`, FAKE_FROM_PHONE)
 	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
-	status := post(t, r, m, "/reminders", requestHandler.HandleCreate, body)
+	status, resp := post(t, r, m, "/reminders", requestHandler.HandleCreate, body)
 	t.True(status == http.StatusCreated, fmt.Sprintf("status %v, expected %v", status, http.StatusCreated))
+	return resp
 }
 
 func sendWhatsappMessageReminderRequest(t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router, body string) {
 	requestHandler := RequestHandler{utils.MockWhatsappClient{}, utils.MockWorkflowClient{}}
-	status := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
+	status, _ := post(t, r, m, "/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate, body)
 	t.True(status == http.StatusOK, fmt.Sprintf("status %v, expected %v", status, http.StatusOK))
 }
 
 func post(
 	t *UnitTestSuite, r *httptest.ResponseRecorder, m *mux.Router,
 	url string, handler func(http.ResponseWriter, *http.Request,
-	), body string) int {
+	), body string) (int, utils.ReminderResponse) {
 	var query = []byte(body)
 	m.HandleFunc(url, handler)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(query))
@@ -187,7 +188,13 @@ func post(
 		t.Fail(err.Error())
 	}
 	m.ServeHTTP(r, req)
-	return r.Code
+
+	var resp utils.ReminderResponse
+	err = json.NewDecoder(r.Body).Decode(&resp)
+	if err != nil {
+		return r.Code, utils.ReminderResponse{}
+	}
+	return r.Code, resp
 }
 
 var whatsappCreateBody = fmt.Sprintf(`{
@@ -262,6 +269,51 @@ var whatsappUpdateBody = fmt.Sprintf(`{
 					"timestamp": "1657724009",
 					"text": {
 					"body": "Update XXXXXXX: 0h 5m"
+					},
+					"type": "text"
+				}
+				]
+			},
+			"field": "messages"
+			}
+		]
+		}
+	]
+	}
+`, FAKE_FROM_PHONE, FAKE_FROM_PHONE, FAKE_FROM_PHONE)
+
+var whatsappDeleteBody = fmt.Sprintf(`{
+	"object": "whatsapp_business_account",
+	"entry": [
+		{
+		"id": "0",
+		"changes": [
+			{
+			"value": {
+				"messaging_product": "whatsapp",
+				"metadata": {
+				"display_phone_number": "16505551111",
+				"phone_number_id": "123456123"
+				},
+				"contacts": [
+				{
+					"profile": {
+					"name": "test user name"
+					},
+					"wa_id": "%s"
+				}
+				],
+				"messages": [
+				{
+					"context": {
+					"from": "%s",
+					"id": "ABGGFlA5Fpa"
+					},
+					"from": "%s",
+					"id": "wamid.HBgLMTUwMjc0MTI0ODAVAgASGBQzRUIwMkJDMDQ5MkNCMzc1NUY0NgA=",
+					"timestamp": "1657724009",
+					"text": {
+					"body": "Update XXXXXXX"
 					},
 					"type": "text"
 				}

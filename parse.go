@@ -37,7 +37,7 @@ func ParseCreateReminderMessage(message string) (string, string, int, error) {
 
 func ParseUpdateReminderMessage(message string) (string, int, error) {
 	// Messages requesting the update of a reminder are formatted as follows:
-	// "Update <Reference ID>: <#H #M"
+	// "Update <Reference ID>: <#H #M>"
 	log.Printf("parseUpdateReminderMessage %s", message)
 	var referenceId string
 	var nMinutes int

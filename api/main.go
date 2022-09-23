@@ -145,7 +145,7 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	log.Printf("WhatsApp message received.")
 	body, err := ioutil.ReadAll(r.Body)
 
-	if len(body) == 0 {
+	if r.Method == "GET" {
 		handleVerification(w, r)
 		return
 	}
@@ -174,6 +174,7 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	timestampInt, err := strconv.ParseInt(timestampStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid WhatsApp request.", http.StatusBadRequest)
+		return
 	}
 	fromTime := time.Unix(timestampInt, 0)
 
@@ -186,8 +187,8 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	reminderInfo, err := doMessageAction(c, fromPhone, message, fromTime)
 
 	if err != nil {
+		log.Print("Sending Whatsapp Error message")
 		whatsapp.GetWhatsappClient().SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
-		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
 	} else {
 		w.WriteHeader(http.StatusOK)

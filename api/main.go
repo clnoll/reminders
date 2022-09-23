@@ -238,7 +238,7 @@ func createReminderFromMessage(c client.Client, phone string, reminderName strin
 	err = whatsapp.GetWhatsappClient().SendMessage(
 		phone,
 		fmt.Sprintf(
-			"Created reminder %s: %s at %s. referenceId=%s",
+			"Scheduled reminder %s: %s to remind at %s. Reference ID=%s",
 			reminderInfo.ReminderName,
 			reminderInfo.ReminderText,
 			utils.GetReminderTime(reminderInfo.FromTime, reminderInfo.NMinutes).Format(app.TIME_FORMAT),

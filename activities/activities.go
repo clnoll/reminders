@@ -59,9 +59,8 @@ func SendReminder(ctx context.Context, reminderDetails utils.ReminderDetails) er
 
 func makeReminderMessage(reminderDetails utils.ReminderDetails) string {
 	return fmt.Sprintf(
-		"%s: %s (Reference ID: %s)",
+		"Reminder: %s: %s",
 		reminderDetails.ReminderName,
 		reminderDetails.ReminderText,
-		reminderDetails.ReferenceId,
 	)
 }

@@ -32,7 +32,7 @@ func MakeReminderWorkflow(ctx workflow.Context, reminderDetails utils.ReminderDe
 		InitialInterval:    time.Second,
 		BackoffCoefficient: 2.0,
 		MaximumInterval:    time.Minute,
-		MaximumAttempts:    500,
+		MaximumAttempts:    2,
 	}
 	options := workflow.ActivityOptions{
 		// Timeout options specify when to automatically timeout Activity functions.

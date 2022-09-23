@@ -87,7 +87,7 @@ func getReminderNMinutesFromMessage(messageTime string) (int, error) {
 		if err != nil {
 			return nMinutes, ReminderParseError(messageTime)
 		}
-		minutes, err := strconv.Atoi(result["hours"])
+		minutes, err := strconv.Atoi(result["minutes"])
 		if err != nil {
 			return nMinutes, ReminderParseError(messageTime)
 		}

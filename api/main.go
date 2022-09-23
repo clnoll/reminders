@@ -144,6 +144,12 @@ func (h *RequestHandler) DeleteReminderHandler(w http.ResponseWriter, r *http.Re
 func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("WhatsApp message received.")
 	body, err := ioutil.ReadAll(r.Body)
+
+	if len(body) == 0 {
+		handleVerification(w, r)
+		return
+	}
+
 	if err != nil {
 		http.Error(w, "Unable to read request body.", http.StatusBadRequest)
 		return
@@ -187,6 +193,21 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusOK)
 		makeReminderResponse(w, reminderInfo)
 	}
+}
+
+func handleVerification(w http.ResponseWriter, r *http.Request) {
+	queryString := r.URL.Query()
+	verifyToken, tokenFound := queryString["hub.verify_token"]
+	challenge, challengeFound := queryString["hub.challenge"]
+
+	if tokenFound == false || challengeFound == false || verifyToken[0] != app.FB_VERIFY_TOKEN {
+		http.Error(w, "Unrecognized request.", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fbResp := fmt.Sprintf("%s", challenge[0])
+	io.WriteString(w, fbResp)
+	return
 }
 
 func doMessageAction(c client.Client, phone string, message string, fromTime time.Time) (utils.ReminderDetails, error) {
@@ -302,7 +323,7 @@ func (h RequestHandler) HandleDelete(writer http.ResponseWriter, reader *http.Re
 	h.DeleteReminderHandler(writer, reader)
 }
 
-func (h RequestHandler) HandleWhatsappCreate(writer http.ResponseWriter, reader *http.Request) {
+func (h RequestHandler) HandleWhatsappCallback(writer http.ResponseWriter, reader *http.Request) {
 	h.WhatsappResponseHandler(writer, reader)
 }
 
@@ -314,7 +335,8 @@ func main() {
 	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleGet).Methods("GET")
 	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleUpdate).Methods("PUT")
 	r.HandleFunc("/reminders/{referenceId}", requestHandler.HandleDelete).Methods("DELETE")
-	r.HandleFunc("/external/reminders/whatsapp", requestHandler.HandleWhatsappCreate).Methods("POST")
+	r.HandleFunc("/external/reminders/whatsapp", requestHandler.HandleWhatsappCallback).Methods("GET")
+	r.HandleFunc("/external/reminders/whatsapp", requestHandler.HandleWhatsappCallback).Methods("POST")
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":8000", r))

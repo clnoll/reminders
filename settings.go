@@ -6,6 +6,8 @@ import (
 
 var ENV = os.Getenv("ENV")
 
+var FB_VERIFY_TOKEN = os.Getenv("FB_VERIFY_TOKEN")
+
 var WhatsappAccountId = os.Getenv("WHATSAPP_ACCOUNT_ID")
 var WhatsappToken = os.Getenv("WHATSAPP_TOKEN")
 

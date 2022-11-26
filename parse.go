@@ -53,6 +53,7 @@ func ParseUpdateReminderMessage(message string) (string, int, error) {
 	referenceId = result["referenceId"]
 	messageTime := result["time"]
 	nMinutes, err = getReminderNMinutesFromMessage(messageTime)
+	fmt.Printf("messageTime=%s nMinutes=%d", messageTime, nMinutes)
 	return referenceId, nMinutes, err
 }
 

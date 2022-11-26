@@ -189,7 +189,8 @@ func (h *RequestHandler) WhatsappResponseHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		log.Print("Sending Whatsapp Error message")
 		whatsapp.GetWhatsappClient().SendMessage(fromPhone, "Unable to create reminder; unrecognized request format.")
-		http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
+		// http.Error(w, "Unrecognized reminder request format.", http.StatusBadRequest)
+		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		makeReminderResponse(w, reminderInfo)
